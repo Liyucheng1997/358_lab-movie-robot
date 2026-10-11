@@ -6,12 +6,13 @@ const root = path.join(__dirname, '..');
 const out = path.join(root, 'dist');
 const base = '/' + (process.env.PAGES_BASE_PATH || 'movie-robot').replace(/^\/+|\/+$/g, '') + '/';
 
-function staticHTML(html, date) {
+function staticHTML(html, date, images = {}) {
   html = html.replace(/\/(?:img|video)\?u=([^"'<>\s\\)]+)/g, (_, u) => decodeURIComponent(u));
   html = html.replace(/(href|src|action|data-src|data-poster)="\/(?!\/)([^"]*)"/g, (_, attr, target) => {
     if (/^play\/\d+$/.test(target) || target === 'search') target += '/';
     return `${attr}="${base}${target}"`;
   });
+  for (const [url, filename] of Object.entries(images)) html = html.split(url).join(`${base}resources/covers/${filename}`);
   return html.replace('<body>', `<body data-static-base="${base}"><div class="snapshot-banner">静态快照 · ${date} 更新 · 搜索范围为本站已收录影片</div>`)
     .replace('</head>', '<meta name="referrer" content="no-referrer"></head>')
     .replace('</body>', `<script src="${base}resources/static.js"></script></body>`);
@@ -25,10 +26,16 @@ async function write(rel, content) {
 
 async function main() {
   const data = JSON.parse(await fs.readFile(path.join(root, 'snapshots/site.json'), 'utf8'));
+  const images = JSON.parse(await fs.readFile(path.join(root, 'snapshots/images/manifest.json'), 'utf8'));
+  for (const url of require('./snapshot-images').imageURLs(data)) {
+    if (!images[url]) throw new Error(`缺少图片快照: ${url}，请运行 npm run snapshot:images`);
+    await fs.access(path.join(root, 'snapshots/images', images[url]));
+  }
   const date = data.builtAt.slice(0, 10);
   await fs.mkdir(out, { recursive: true });
   await fs.cp(path.join(root, 'public'), path.join(out, 'resources'), { recursive: true });
-  const render = html => staticHTML(html, date);
+  await fs.cp(path.join(root, 'snapshots/images'), path.join(out, 'resources/covers'), { recursive: true });
+  const render = html => staticHTML(html, date, images);
   const popular = type => data.lists.find(l => l.type === type && l.tag === '热门')?.items || [];
   await write('index.html', render(views.homePage({ movies: popular('movie'), tvs: popular('tv'), weekly: data.boards[0] })));
   for (const list of data.lists) {
@@ -44,7 +51,8 @@ async function main() {
     await write(`play/${id}/index.html`, render(views.playPage(d)));
     await write(`api/sources/${id}.json`, JSON.stringify(data.sources[id] || { lines: [], message: '暂无线路快照。' }));
   }
-  const catalog = Object.values(data.details).map(d => ({ id: d.id, title: d.title, year: d.year, cover: d.cover, aka: d.aka, originalTitle: d.originalTitle }));
+  const catalog = Object.values(data.details).map(d => ({ id: d.id, title: d.title, year: d.year,
+    cover: images[d.cover] ? `${base}resources/covers/${images[d.cover]}` : d.cover, aka: d.aka, originalTitle: d.originalTitle }));
   await write('catalog.json', JSON.stringify(catalog));
   await write('.nojekyll', '');
   console.log(`Pages 构建完成: ${catalog.length} 部影片，路径 ${base}`);

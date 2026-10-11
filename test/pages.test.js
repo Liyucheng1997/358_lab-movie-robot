@@ -17,3 +17,11 @@ test('Pages 直接使用媒体 URL，不依赖服务端代理', () => {
   assert.match(html, /src="https:\/\/video.example.com\/trailer.mp4"/);
   assert.doesNotMatch(html, /\/(img|video)\?u=/);
 });
+
+test('Pages 海报、播放器封面和历史记录使用本地图片快照，避免防盗链', () => {
+  const url = 'https://img3.doubanio.com/view/photo/public/poster.jpg';
+  const html = staticHTML(`<head></head><body><img data-src="/img?u=${encodeURIComponent(url)}"><video poster="/img?u=${encodeURIComponent(url)}"></video><script>initPlay({"cover":"/img?u=${encodeURIComponent(url)}"})</script></body>`, '2026-10-11', { [url]: 'poster.jpg' });
+  assert.doesNotMatch(html, /img3\.doubanio\.com/);
+  assert.equal((html.match(/\/movie-robot\/resources\/covers\/poster.jpg/g) || []).length, 3);
+  assert.doesNotMatch(html, /\/movie-robot\/movie-robot\//);
+});

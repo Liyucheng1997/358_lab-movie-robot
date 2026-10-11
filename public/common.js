@@ -62,6 +62,21 @@
       }).join('') + '</div>';
     }
     draw();
+    if (document.body.dataset.staticBase) {
+      fetch(document.body.dataset.staticBase + 'catalog.json').then(function (r) {
+        if (!r.ok) throw new Error('目录加载失败');
+        return r.json();
+      }).then(function (catalog) {
+        var covers = {};
+        catalog.forEach(function (m) { covers[String(m.id)] = m.cover; });
+        var list = readHistory().map(function (m) {
+          if (covers[String(m.id)]) m.cover = covers[String(m.id)];
+          return m;
+        });
+        writeHistory(list);
+        draw();
+      }).catch(function () {});
+    }
     document.getElementById('clear-history').addEventListener('click', function () {
       if (confirm('确定清空播放历史吗？')) {
         writeHistory([]);

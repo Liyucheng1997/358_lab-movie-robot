@@ -1,6 +1,6 @@
 {
   "name": "movie-robot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "仿 ikanbot 布局的影视聚合站（数据来自豆瓣公开接口）",
   "main": "server.js",
   "private": true,
@@ -9,6 +9,7 @@
     "dev": "node --watch server.js",
     "test": "node --test",
     "snapshot": "node scripts/snapshot.js",
+    "snapshot:images": "node scripts/snapshot-images.js",
     "build:pages": "node scripts/build-pages.js",
     "preview:pages": "node scripts/preview-pages.js"
   },

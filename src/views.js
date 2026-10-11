@@ -104,7 +104,7 @@ ${header}
 ${topNav(active, isIndex)}
 ${body}
 ${bottomNav()}
-<script src="/resources/common.js?v=2"></script>
+<script src="/resources/common.js?v=3"></script>
 ${scripts}
 </body>
 </html>`;

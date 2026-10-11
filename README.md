@@ -12,16 +12,17 @@ Pages 只托管静态文件，因此线上版本读取构建快照；本地 Node
 
 ```bash
 npm run snapshot       # 本地联网抓取影片资料和线路，写入 snapshots/site.json
+npm run snapshot:images # 下载豆瓣海报、预告封面和平台图标，避免防盗链
 npm run build:pages    # 从快照生成 dist/，不依赖外部接口
 npm run preview:pages  # http://localhost:4173/movie-robot/ 验证静态版
-git add snapshots/site.json
+git add snapshots/
 git commit -m "Refresh movie snapshot"
 git push               # main 分支推送触发 Pages 自动部署
 ```
 
 使用已提交快照进行 CI 构建，避免 GitHub runner 无法访问数据源导致站点空白。也可以在 Actions 中手动运行 `Deploy GitHub Pages`。`PAGES_BASE_PATH` 指定项目路径，默认 `movie-robot`；更改仓库名时 workflow 自动使用新名称。
 
-静态版海报和视频直接向源站请求，图片使用无 Referer 策略。视频能否播放仍取决于源站可用性、CORS 和浏览器编码支持。动态版使用服务端豆瓣图片/预告代理。
+静态版的豆瓣图片在构建前使用豆瓣 Referer 下载至 `snapshots/images/`，随 Pages 同站部署；首页、详情、搜索及播放历史使用这些图片快照，避免跨站防盗链。视频直接向源站请求，能否播放仍取决于源站可用性、CORS 和浏览器编码支持。动态版使用服务端豆瓣图片/预告代理。
 
 ## 运行
 
