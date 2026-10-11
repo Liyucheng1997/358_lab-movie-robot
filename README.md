@@ -2,7 +2,7 @@
 
 零依赖的 Node.js 影视聚合站，页面结构、URL 规则与 ikanbot 一致，数据实时取自豆瓣公开接口。
 
-[在线访问 GitHub Pages](https://Liyucheng1997.github.io/movie-robot/) · [v1.0.0 版本](https://github.com/Liyucheng1997/movie-robot/releases/tag/v1.0.0)
+[在线访问 GitHub Pages](https://Liyucheng1997.github.io/358_lab-movie-robot/) · [v1.0.0 版本](https://github.com/Liyucheng1997/358_lab-movie-robot/releases/tag/v1.0.0)
 
 ## GitHub Pages 静态版
 
@@ -14,13 +14,13 @@ Pages 只托管静态文件，因此线上版本读取构建快照；本地 Node
 npm run snapshot       # 本地联网抓取影片资料和线路，写入 snapshots/site.json
 npm run snapshot:images # 下载豆瓣海报、预告封面和平台图标，避免防盗链
 npm run build:pages    # 从快照生成 dist/，不依赖外部接口
-npm run preview:pages  # http://localhost:4173/movie-robot/ 验证静态版
+npm run preview:pages  # http://localhost:4173/358_lab-movie-robot/ 验证静态版
 git add snapshots/
 git commit -m "Refresh movie snapshot"
 git push               # main 分支推送触发 Pages 自动部署
 ```
 
-使用已提交快照进行 CI 构建，避免 GitHub runner 无法访问数据源导致站点空白。也可以在 Actions 中手动运行 `Deploy GitHub Pages`。`PAGES_BASE_PATH` 指定项目路径，默认 `movie-robot`；更改仓库名时 workflow 自动使用新名称。
+使用已提交快照进行 CI 构建，避免 GitHub runner 无法访问数据源导致站点空白。也可以在 Actions 中手动运行 `Deploy GitHub Pages`。`PAGES_BASE_PATH` 指定项目路径，默认 `358_lab-movie-robot`；更改仓库名时 workflow 自动使用新名称。
 
 静态版的豆瓣图片在构建前使用豆瓣 Referer 下载至 `snapshots/images/`，随 Pages 同站部署；首页、详情、搜索及播放历史使用这些图片快照，避免跨站防盗链。视频直接向源站请求，能否播放仍取决于源站可用性、CORS 和浏览器编码支持。动态版使用服务端豆瓣图片/预告代理。
 

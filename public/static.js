@@ -12,8 +12,11 @@
     if (!r.ok) throw new Error('目录加载失败');
     return r.json();
   }).then(function (catalog) {
+    // 忽略大小写、空格和标点，「蝙蝠侠黑暗骑士」也能匹配「蝙蝠侠：黑暗骑士」
+    var norm = function (s) { return String(s || '').toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, ''); };
+    var key = norm(q) || q.toLowerCase();
     var results = catalog.filter(function (d) {
-      return [d.title, d.originalTitle].concat(d.aka || []).join(' ').toLowerCase().includes(q.toLowerCase());
+      return [d.title, d.originalTitle].concat(d.aka || []).some(function (t) { return norm(t).includes(key); });
     });
     box.replaceChildren();
     if (!results.length) { box.textContent = '当前快照尚未收录相关影片，请换个关键词。'; return; }

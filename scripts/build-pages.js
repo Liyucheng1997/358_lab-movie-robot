@@ -4,7 +4,7 @@ const views = require('../src/views');
 const douban = require('../src/douban');
 const root = path.join(__dirname, '..');
 const out = path.join(root, 'dist');
-const base = '/' + (process.env.PAGES_BASE_PATH || 'movie-robot').replace(/^\/+|\/+$/g, '') + '/';
+const base = '/' + (process.env.PAGES_BASE_PATH || '358_lab-movie-robot').replace(/^\/+|\/+$/g, '') + '/';
 
 function staticHTML(html, date, images = {}) {
   html = html.replace(/\/(?:img|video)\?u=([^"'<>\s\\)]+)/g, (_, u) => decodeURIComponent(u));
@@ -59,4 +59,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exitCode = 1; });
-module.exports = { staticHTML };
+module.exports = { staticHTML, base };
