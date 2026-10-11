@@ -24,6 +24,14 @@ git push               # main 分支推送触发 Pages 自动部署
 
 静态版的豆瓣图片在构建前使用豆瓣 Referer 下载至 `snapshots/images/`，随 Pages 同站部署；首页、详情、搜索及播放历史使用这些图片快照，避免跨站防盗链。视频直接向源站请求，能否播放仍取决于源站可用性、CORS 和浏览器编码支持。动态版使用服务端豆瓣图片/预告代理。
 
+## 服务器实时版
+
+[movie.liyucheng.me](https://movie.liyucheng.me) 运行 Node.js 实时版，不使用快照，搜索和线路直接查询上游。
+
+- 服务器目录 `/opt/apps/movie`，systemd 服务 `app-movie`，监听 `127.0.0.1:4358`，由 nginx 反向代理并提供 HTTPS。
+- 推送 `main` 且改动 `server.js`、`src/`、`public/` 或 `package.json` 时，`Deploy Server` workflow 先运行测试，再通过受限 SSH 钥匙调用服务器上的 `/usr/local/bin/deploy-movie`（拉取代码、重启服务、健康检查）。也可在 Actions 中手动运行。
+- 所需 secrets：`MOVIE_DEPLOY_SSH_KEY`、`MOVIE_DEPLOY_KNOWN_HOSTS`。
+
 ## 运行
 
 ```bash
