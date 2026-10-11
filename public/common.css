@@ -1,0 +1,149 @@
+@charset "UTF-8";
+
+body { background: #fff; color: #333; }
+.snapshot-banner { padding: 8px 16px; text-align: center; background: #f4f8fa; color: #63717a; font-size: 12px; }
+ul, li { margin: 0; padding: 0; list-style: none; }
+a img { border-width: 0; vertical-align: middle; }
+h5 { margin-top: 0; margin-bottom: 10px; }
+.main { padding-bottom: 15px; margin-bottom: 80px; }
+
+/* ---------- 顶部：logo + 搜索框 ---------- */
+.site-header { background: none; border-bottom: 1px solid #eaeaea; padding: 15px 0; margin-bottom: 0; }
+.nav-container { display: flex; height: 55px; }
+.nav-left { width: 65px; }
+.nav-right { flex: 1; position: relative; }
+
+.green_window { position: relative; height: 55px; border: 2px solid #eaeaea; border-radius: 2px; }
+.input_text {
+  width: 100%; height: 51px; padding: 10px 80px 10px 15px; background-color: #fff;
+  font-size: 15px; line-height: 24px; color: #000; font-weight: 500; outline: 0; border: 0; border-radius: 0;
+}
+.btn_submit {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 66px; height: 55px;
+  background-color: #eaeaea; border-radius: 0 2px 2px 0; cursor: pointer; border: 0; margin: 0; padding: 0;
+}
+.btn_submit:hover { background-color: #ddd; }
+.index.search { height: 60px; margin: 20px auto 40px; position: relative; }
+
+.index-logo { width: 240px; height: 65px; margin: 40px auto 0; text-align: center; white-space: nowrap; }
+.index-logo img { vertical-align: middle; }
+.index-logo span { display: inline-block; vertical-align: middle; margin-left: 8px; font-weight: 500; font-size: 28px; color: #999; }
+
+/* ---------- 导航条 ---------- */
+.top-nav {
+  background: none; border-bottom: 1px solid #eaeaea; padding: 5px 0; margin-bottom: 0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .12);
+}
+.top-nav-index { border-top: 1px solid #eaeaea; margin-bottom: 15px; }
+.top-nav .nav { margin-left: -15px; }
+.top-nav .active-nav > a { color: #00a1d6; font-weight: 500; }
+.history-link a { text-decoration: underline; }
+
+.navbar .nav { display: flex; margin-left: 0; }
+.navbar .nav > li { flex: 1; text-align: center; }
+.navbar .nav a { padding: 10px 0; }
+.bottom-nav { font-size: 15px; margin-top: 5px; margin-bottom: 5px; padding: 0; }
+
+/* ---------- 海报列表 ---------- */
+.v-list { margin-bottom: 40px; }
+.v-list h4 span { float: right; font-size: 14px; }
+.v-list .list-wp { overflow: hidden; }
+.v-list .row { margin-left: -10px; margin-right: -10px; }
+.list-wp .col-xs-4, .list-wp .col-sm-3, .list-wp .col-md-2 { padding-left: 10px; padding-right: 10px; }
+.v-list .item { text-align: center; }
+.v-list .item .cover-wp { position: relative; padding-bottom: 140%; overflow: hidden; background: #f0f0f0; }
+.v-list .item .cover-wp img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.v-list .item a:hover .cover-wp img { transform: scale(1.05); }
+.v-list .item .cover-wp:after {
+  content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 20px;
+  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .5));
+}
+.v-list .item .rate { position: absolute; right: 4px; bottom: 2px; z-index: 1; color: #ffb400; font-size: 12px; font-weight: 600; }
+.v-list .item .new { position: absolute; left: 0; top: 0; z-index: 1; background: #e6544b; color: #fff; font-size: 12px; padding: 0 5px; }
+.v-list .item p { margin: 5px 0 0; height: 40px; overflow: hidden; }
+.empty { padding: 40px 0; text-align: center; }
+
+.row .nav { margin-bottom: 10px; }
+.tag-pills > li > a { padding: 6px 12px; }
+.tag-pills > li.disabled > a { color: #777; }
+.page-more { line-height: 20px; text-align: center; width: 100%; margin: 20px 0; font-size: 14px; font-weight: 500; }
+.page-more .sep { margin: 0 15px; color: #ccc; }
+
+/* ---------- 侧栏榜单 ---------- */
+.article-list h4 span { float: right; font-size: 14px; }
+.article-list li { line-height: 32px; border-bottom: 1px dashed #eee; }
+.rank-no { width: 26px; text-align: center; display: inline-block; color: #999; }
+.article-list li:nth-child(-n+3) .rank-no { color: #e6544b; font-weight: 600; }
+
+/* ---------- 条目卡片（榜单/搜索/详情侧栏） ---------- */
+.cover { width: 65px; max-height: 97px; border-width: 0; vertical-align: middle; margin: 5px 15px 5px 5px; background: #f0f0f0; }
+.result-info { display: block; margin-top: 10px; color: #333; }
+a.result-info:hover { text-decoration: none; background: #f7f7f7; }
+.result-info .item-root { display: flex; position: relative; align-items: flex-start; }
+.result-info .detail { flex: 1; min-width: 0; }
+.result-info .detail .title { font-size: 14px; font-weight: 500; margin: 5px 0; }
+.result-info .detail h3 { font-size: 12px; line-height: 1.6; font-weight: normal; margin: 0; color: #666; }
+.item .detail .meta, .result-info .meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score { color: #e09015; font-weight: 600; }
+.cover.lazy { height: 91px; object-fit: cover; }
+
+.billboard { margin-bottom: 30px; }
+.billboard h4 small { font-size: 12px; margin-left: 6px; }
+.board-item { border-bottom: 1px solid #f2f2f2; padding-bottom: 5px; }
+.board-rank { width: 24px; flex: none; text-align: center; margin-top: 38px; color: #999; font-weight: 600; }
+.board-rank.top { color: #e6544b; }
+.search-list .result-info .cover { width: 80px; max-height: 112px; height: 112px; }
+
+/* ---------- 播放页 ---------- */
+.play-main { margin-bottom: 60px; }
+.player-wrap { background: #000; margin-top: 15px; }
+.player-wrap video { background: #000; width: 100%; height: 100%; }
+.no-video { background-size: cover; background-position: center; }
+.no-video-mask { position: absolute; inset: 0; background: rgba(0, 0, 0, .65); display: flex; align-items: center; justify-content: center; }
+.no-video-mask p { color: #ddd; font-size: 16px; margin: 0; }
+#video_title { margin-top: 15px; margin-bottom: 5px; font-size: 24px; }
+.section-title { font-size: 15px; font-weight: 500; line-height: 25px; }
+.line-count { font-size: 12px; font-weight: 500; line-height: 25px; }
+.line-tips { color: #777; font-size: 13px; }
+.line-box { margin-top: 10px; margin-bottom: 30px; }
+.line-name { font-size: 14px; font-weight: 500; }
+.line-res { max-height: 180px; overflow-y: auto; background-color: #f4f4f4; padding: 0 10px 10px; margin: 10px 0; }
+.line-res div {
+  margin-right: 10px; margin-top: 10px; height: 40px; line-height: 40px; float: left; padding: 0 20px;
+  background-color: #fff; border: 1px solid #e5e9ef; cursor: pointer;
+}
+.line-res div small { color: #999; }
+.line-res div.active { border: 1px solid #00a1d6; color: #fff; background-color: #00a1d6; cursor: text; }
+.line-res div.active small { color: #e0f4fb; }
+.source-heading { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+#source-status, #player-status { margin: 8px 0; font-size: 13px; }
+#source-lines { max-height: 460px; overflow-y: auto; margin-bottom: 24px; }
+.line-res .episode-button { margin: 10px 10px 0 0; min-height: 40px; padding: 8px 20px; background: #fff; border: 1px solid #e5e9ef; color: #333; cursor: pointer; }
+.line-res .episode-button.active { background: #00a1d6; border-color: #00a1d6; color: #fff; }
+.line-res .episode-button:focus-visible { outline: 2px solid #00a1d6; outline-offset: 2px; }
+
+.vendor-box { margin-bottom: 25px; }
+.vendor-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.vendor-list a {
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #e5e9ef;
+  background: #fff; color: #333;
+}
+.vendor-list a:hover { border-color: #00a1d6; text-decoration: none; }
+.vendor-list img { width: 20px; height: 20px; }
+.vendor-list .free { color: #3a9d23; }
+.vendor-list .paid { color: #e09015; }
+.vendor-empty { margin-bottom: 25px; }
+.intro p { color: #555; line-height: 1.8; text-indent: 2em; margin-top: 5px; }
+
+.info-panel { background-color: #f4f4f4; padding: 0 10px 10px; margin-top: 15px; }
+.info-panel .cover { width: 100px; max-height: 150px; }
+.info-panel .detail h3 { white-space: normal; }
+.info-table { margin: 10px 0 0; font-size: 13px; }
+.info-table th { width: 70px; color: #888; font-weight: normal; border-top-color: #e6e6e6 !important; }
+.info-table td { border-top-color: #e6e6e6 !important; }
+
+@media (max-width: 991px) {
+  .main { margin-bottom: 90px; }
+  .player-wrap { margin-left: -15px; margin-right: -15px; margin-top: 0; }
+  .index-logo { margin-top: 25px; }
+}
