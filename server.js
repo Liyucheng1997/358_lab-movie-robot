@@ -158,4 +158,4 @@ http
       else res.destroy();
     });
   })
-  .listen(PORT, () => console.log(`服务已启动: http://localhost:${PORT}`));
+  .listen(PORT, process.env.HOST, () => console.log(`服务已启动: http://${process.env.HOST || 'localhost'}:${PORT}`));

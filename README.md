@@ -31,7 +31,7 @@ npm start            # 或 node server.js，默认 http://localhost:3000
 npm run dev          # 修改代码后自动重启
 ```
 
-环境变量：`PORT`（端口）、`SITE_NAME`（站点名称，默认「看片机器人」）。需要 Node 18+。
+环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「看片机器人」）。需要 Node 18+。
 
 ## 页面
 
