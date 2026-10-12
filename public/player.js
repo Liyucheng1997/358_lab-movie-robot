@@ -56,6 +56,14 @@
       }
     }
 
+    // 手机上选集列表在播放器下方较远处，点选后把播放器滚回视野
+    function revealPlayer() {
+      var rect = video.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        video.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
     video.addEventListener('error', function () {
       if (video.getAttribute('src')) status.textContent = '播放失败，请切换其他线路。';
     });
@@ -65,6 +73,7 @@
       button.setAttribute('tabindex', '0');
       button.addEventListener('click', function () {
         select(button, button.dataset.src, 'mp4', button.dataset.poster, true);
+        revealPlayer();
       });
       button.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); button.click(); }
@@ -90,27 +99,55 @@
         }
         box.replaceChildren();
         var first;
-        (data.lines || []).forEach(function (line) {
+        // 线路做成横向标签，一次只展开一条线路的选集，避免几十个滚动框叠在一起
+        var tabs = document.createElement('div');
+        tabs.className = 'line-tabs';
+        tabs.setAttribute('role', 'tablist');
+        var panels = [];
+        (data.lines || []).forEach(function (line, index) {
+          var tab = document.createElement('button');
+          tab.type = 'button';
+          tab.className = 'line-tab';
+          tab.textContent = line.name;
+          tab.setAttribute('role', 'tab');
           var group = document.createElement('div');
           group.className = 'line-box';
-          var label = document.createElement('p');
-          label.className = 'line-name';
-          label.textContent = line.name;
+          group.setAttribute('role', 'tabpanel');
           var episodes = document.createElement('div');
-          episodes.className = 'line-res clearfix';
+          episodes.className = 'line-res episode-grid';
           line.episodes.forEach(function (episode) {
             var button = document.createElement('button');
             button.type = 'button';
             button.className = 'episode-button';
             button.textContent = episode.title;
+            button.title = episode.title;
             button.setAttribute('aria-pressed', 'false');
-            button.addEventListener('click', function () { select(button, episode.url, episode.type, '', true); });
+            button.addEventListener('click', function () {
+              select(button, episode.url, episode.type, '', true);
+              revealPlayer();
+            });
             if (!first) first = { button: button, episode: episode };
             episodes.appendChild(button);
           });
-          group.append(label, episodes);
+          group.appendChild(episodes);
+          tab.addEventListener('click', function () { showLine(index); });
+          tabs.appendChild(tab);
+          panels.push({ tab: tab, group: group });
           box.appendChild(group);
         });
+        function showLine(index) {
+          panels.forEach(function (p, i) {
+            p.tab.classList.toggle('active', i === index);
+            p.tab.setAttribute('aria-selected', String(i === index));
+            p.group.hidden = i !== index;
+          });
+          var tab = panels[index].tab;
+          tabs.scrollLeft = tab.offsetLeft - (tabs.clientWidth - tab.offsetWidth) / 2;
+        }
+        if (panels.length) {
+          box.insertBefore(tabs, box.firstChild);
+          showLine(0);
+        }
         sourceStatus.textContent = data.lines.length ? '共 ' + data.lines.length + ' 条线路，可切换线路和选集。' : data.message;
         if (first && !selected) select(first.button, first.episode.url, first.episode.type, '', false);
       } catch (e) {

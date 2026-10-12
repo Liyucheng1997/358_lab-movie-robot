@@ -43,18 +43,18 @@ function topNav(active, isIndex) {
 </div>`;
 }
 
-function bottomNav() {
-  const li = (href, icon, text) =>
-    `<li><a href="${href}"><span class="glyphicon glyphicon-${icon}"></span><br><span>${text}</span></a></li>`;
+function bottomNav(active) {
+  const li = (key, href, icon, text) =>
+    `<li${active === key ? ' class="active-nav"' : ''}><a href="${href}"${active === key ? ' aria-current="page"' : ''}><span class="glyphicon glyphicon-${icon}"></span><br><span>${text}</span></a></li>`;
   return `
 <nav class="navbar navbar-default navbar-fixed-bottom visible-xs-block visible-sm-block">
   <div class="container bottom-nav">
     <ul class="nav nav-pills">
-      ${li('/', 'home', '首页')}
-      ${li(hotUrl('movie', '热门'), 'film', '电影')}
-      ${li(hotUrl('tv', '热门'), 'facetime-video', '剧集')}
-      ${li('/billboard.html', 'stats', '榜单')}
-      ${li('/history.html', 'time', '看过')}
+      ${li('home', '/', 'home', '首页')}
+      ${li('movie', hotUrl('movie', '热门'), 'film', '电影')}
+      ${li('tv', hotUrl('tv', '热门'), 'facetime-video', '剧集')}
+      ${li('billboard', '/billboard.html', 'stats', '榜单')}
+      ${li('history', '/history.html', 'time', '看过')}
     </ul>
   </div>
 </nav>`;
@@ -92,18 +92,19 @@ function layout({ title, body, active, isIndex = false, description = '', script
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
   <title>${esc(title ? `${title}-${SITE_NAME}` : SITE_NAME)}</title>
   <meta name="description" content="${esc(description || title || SITE_NAME)}">
   <link rel="icon" href="/resources/logo.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=2">
+  <link rel="stylesheet" href="/resources/common.css?v=3">
 </head>
 <body>
 ${header}
 ${topNav(active, isIndex)}
 ${body}
-${bottomNav()}
+${bottomNav(active)}
 <script src="/resources/common.js?v=3"></script>
 ${scripts}
 </body>
@@ -277,6 +278,14 @@ function searchPage(q, results, error) {
 function playPage(d) {
   const trailers = d.trailers;
   const first = trailers[0];
+  // 手机端信息面板排在页面底部，标题下先给出评分、年份、类型等关键信息
+  const mobileMeta = [
+    d.rating ? `<span class="score">${esc(d.rating)}分</span>` : '',
+    esc(d.year),
+    esc(d.genres.slice(0, 3).join(' / ')),
+    esc(d.countries.slice(0, 2).join(',')),
+    esc(d.episodes),
+  ].filter(Boolean);
   const people = [d.directors.join(','), d.actors.slice(0, 5).join(',')].filter(Boolean).join('/');
   const player = first
     ? `<video id="player" class="embed-responsive-item" controls preload="metadata" playsinline
@@ -321,6 +330,7 @@ function playPage(d) {
   <div class="row">
     <div class="col-xs-12 col-md-8">
       <h1 id="video_title">${esc(d.title)}</h1>
+      ${mobileMeta.length ? `<p class="play-meta visible-xs-block visible-sm-block">${mobileMeta.join('<span class="dot">·</span>')}</p>` : ''}
       <div class="source-heading"><span class="section-title">第三方播放线路</span><button id="retry-sources" type="button" class="btn btn-default btn-xs">重新加载</button></div>
       <p id="source-status" class="text-muted" role="status" aria-live="polite">正在匹配影片并加载线路…</p>
       <div id="source-lines"></div>
@@ -362,7 +372,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=2"></script><script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=3"></script><script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 
