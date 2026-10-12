@@ -1,4 +1,5 @@
 // 服务端渲染模板（结构与类名对照原站：Bootstrap 3 栅格 + v-list / result-info / line-res）
+const douban = require('./douban');
 const SITE_NAME = process.env.SITE_NAME || '看片机器人';
 
 const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3C/svg%3E";
@@ -98,7 +99,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <meta name="description" content="${esc(description || title || SITE_NAME)}">
   <link rel="icon" href="/resources/logo.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=3">
+  <link rel="stylesheet" href="/resources/common.css?v=4">
 </head>
 <body>
 ${header}
@@ -236,40 +237,56 @@ function billboardPage(boards) {
   return layout({ title: '影视排行榜', body, active: 'billboard' });
 }
 
-function searchPage(q, results, error) {
+const searchUrl = (q, page = 1) => `/search?q=${encodeURIComponent(q)}${page > 1 ? `&page=${page}` : ''}`;
+
+function searchPage(q, result = { items: [], total: 0, hasNext: false }, error = false, page = 1) {
+  const { items, total, hasNext } = result;
   const list = error
     ? '<p class="text-muted">搜索服务暂时不可用，请稍后再试。</p>'
-    : results.length
-      ? results
+    : items.length
+      ? items
           .map(
             (m) => `
     <a class="result-info board-item" href="/play/${m.id}">
       <div class="item-root">
         <img class="cover lazy" src="${BLANK}" data-src="${esc(img(m.cover))}" alt="${esc(m.title)}">
         <div class="detail">
-          <h2 class="meta title">${esc(m.title)}</h2>
+          <h2 class="meta title">${esc(m.title)}${m.rate ? ` <span class="score">${esc(m.rate)}</span>` : ''}</h2>
+          <h3 class="meta">${esc([m.year, m.typeName].filter(Boolean).join(' · '))}</h3>
           ${m.subTitle && m.subTitle !== m.title ? `<h3 class="meta">${esc(m.subTitle)}</h3>` : ''}
-          <h3 class="meta">${esc(m.year)}</h3>
-          ${m.episode ? `<h3 class="meta">${esc(m.episode)}集</h3>` : ''}
         </div>
       </div>
     </a>`
           )
           .join('')
       : q
-        ? `<p class="text-muted">没有找到与「${esc(q)}」相关的影片，换个关键词试试。</p>`
+        ? `<p class="text-muted">${page > 1 ? '没有更多结果了。' : `没有找到与「${esc(q)}」相关的影片，换个关键词试试。`}</p>`
         : '<p class="text-muted">请输入关键词搜索。</p>';
+  const pages = total ? Math.ceil(total / douban.SEARCH_PAGE_SIZE) : page;
+  const pager =
+    page > 1 || hasNext
+      ? `
+<div class="page-more">
+  ${page > 1 ? `<a href="${esc(searchUrl(q, page - 1))}">上一页</a>` : ''}
+  <span class="page-no">第 ${page}${total ? ` / ${pages}` : ''} 页</span>
+  ${hasNext ? `<a href="${esc(searchUrl(q, page + 1))}">下一页</a>` : ''}
+</div>`
+      : '';
+  const heading = q
+    ? `「${esc(q)}」的搜索结果${total ? ` <small class="text-muted">共 ${total} 条</small>` : ''}`
+    : '搜索';
   const body = `
 <div class="container main" style="margin-top: 15px;">
   <div class="row">
     <div class="col-xs-12 col-md-8">
-      <h5>${q ? `「${esc(q)}」的搜索结果` : '搜索'}</h5>
+      <h5>${heading}</h5>
       <div class="search-list">${list}</div>
+      ${pager}
     </div>
   </div>
 </div>`;
   return layout({
-    title: q ? `${q}-搜索结果` : '搜索',
+    title: q ? `${q}-搜索结果${page > 1 ? `-第${page}页` : ''}` : '搜索',
     body,
     scripts: `<script>fillSearch(${JSON.stringify(q).replace(/</g, '\\u003c')});</script>`,
   });
@@ -331,7 +348,7 @@ function playPage(d) {
     <div class="col-xs-12 col-md-8">
       <h1 id="video_title">${esc(d.title)}</h1>
       ${mobileMeta.length ? `<p class="play-meta visible-xs-block visible-sm-block">${mobileMeta.join('<span class="dot">·</span>')}</p>` : ''}
-      <div class="source-heading"><span class="section-title">第三方播放线路</span><button id="retry-sources" type="button" class="btn btn-default btn-xs">重新加载</button></div>
+      <div class="source-heading"><span class="section-title">第三方播放线路</span><button id="retry-sources" type="button" class="btn btn-default btn-xs">重新检测</button></div>
       <p id="source-status" class="text-muted" role="status" aria-live="polite">正在匹配影片并加载线路…</p>
       <div id="source-lines"></div>
       <span class="section-title">预告片选择</span>
@@ -372,7 +389,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=3"></script><script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=4"></script><script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 

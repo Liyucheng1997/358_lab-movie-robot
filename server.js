@@ -110,12 +110,13 @@ async function route(req, res) {
 
   if (pathname === '/search') {
     const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
-    if (!q) return send(res, 200, views.searchPage('', []));
+    const page = Math.min(50, Math.max(1, Number(url.searchParams.get('page')) || 1));
+    if (!q) return send(res, 200, views.searchPage(''));
     try {
-      return send(res, 200, views.searchPage(q, await douban.search(q)));
+      return send(res, 200, views.searchPage(q, await douban.search(q, page), false, page));
     } catch (e) {
       console.error(e.message);
-      return send(res, 200, views.searchPage(q, [], true));
+      return send(res, 200, views.searchPage(q, undefined, true, page));
     }
   }
 

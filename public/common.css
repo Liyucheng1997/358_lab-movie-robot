@@ -68,6 +68,8 @@ h5 { margin-top: 0; margin-bottom: 10px; }
 .tag-pills > li.disabled > a { color: #777; }
 .page-more { line-height: 20px; text-align: center; width: 100%; margin: 20px 0; font-size: 14px; font-weight: 500; }
 .page-more .sep { margin: 0 15px; color: #ccc; }
+.page-more .page-no { margin: 0 15px; color: #999; font-weight: normal; }
+.main h5 small { font-size: 12px; margin-left: 6px; }
 
 /* ---------- 侧栏榜单 ---------- */
 .article-list h4 span { float: right; font-size: 14px; }
@@ -118,12 +120,26 @@ a.result-info:hover { text-decoration: none; background: #f7f7f7; }
 .source-heading { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 #source-status, #player-status { margin: 8px 0; font-size: 13px; }
 #source-lines { margin-bottom: 24px; }
-.line-tabs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 6px; }
+.line-tabs { position: relative; display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 6px; }
 .line-tab {
   flex: none; padding: 6px 14px; border: 1px solid #e5e9ef; border-radius: 16px; background: #fff;
-  color: #555; font-size: 13px; white-space: nowrap; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; color: #555; font-size: 13px; white-space: nowrap; cursor: pointer;
 }
-.line-tab.active { border-color: #00a1d6; background: #00a1d6; color: #fff; }
+.line-dot { width: 7px; height: 7px; border-radius: 50%; background: #c8ccd2; flex: none; }
+.line-speed { font-size: 11px; color: #999; }
+.line-tab.is-checking .line-dot { animation: line-pulse 1s ease-in-out infinite alternate; }
+.line-tab.is-ok .line-dot { background: #3a9d23; }
+.line-tab.is-ok .line-speed { color: #3a9d23; }
+.line-tab.is-slow .line-dot { background: #e09015; }
+.line-tab.is-slow .line-speed { color: #e09015; }
+.line-tab.is-fail { color: #aaa; border-style: dashed; }
+.line-tab.is-fail .line-dot { background: #e6544b; opacity: .6; }
+.line-tab.is-fail .line-speed { color: #e6544b; opacity: .8; }
+.line-tab.active { border-color: #00a1d6; background: #00a1d6; color: #fff; border-style: solid; }
+.line-tab.active .line-speed { color: rgba(255, 255, 255, .85); opacity: 1; }
+.line-tab.active .line-dot { box-shadow: 0 0 0 2px #fff; }
+@keyframes line-pulse { from { opacity: .3; } to { opacity: 1; } }
+.line-info { margin: 6px 0 0; font-size: 12px; color: #888; }
 .line-tab:focus-visible { outline: 2px solid #00a1d6; outline-offset: 2px; }
 #source-lines .line-box { margin-top: 4px; margin-bottom: 0; }
 .episode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; max-height: 300px; padding: 10px; }

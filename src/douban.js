@@ -133,8 +133,40 @@ function detail(id) {
   });
 }
 
-// 搜索建议接口（最多约 10 条）
-function search(q) {
+const SEARCH_PAGE_SIZE = 20;
+
+// 移动版搜索接口，支持分页，也能按演职人员搜索；失败时退回搜索建议接口（只有第一页、约 10 条）
+function search(q, page = 1) {
+  const start = (page - 1) * SEARCH_PAGE_SIZE;
+  const url = `https://m.douban.com/rexxar/api/v2/search/movie?q=${encodeURIComponent(q)}&start=${start}&count=${SEARCH_PAGE_SIZE}`;
+  return cached(url, 30 * MIN, async () => {
+    try {
+      const data = await getJSON(url, 'https://m.douban.com/');
+      const items = (data.items || [])
+        .filter((it) => it.target && /^\d+$/.test(it.target_id || it.target.id))
+        .map((it) => {
+          const t = it.target;
+          return {
+            id: it.target_id || t.id,
+            title: String(t.title || '').replace(/\s+/g, ' ').trim(),
+            subTitle: t.card_subtitle,
+            year: t.year,
+            // 接口给的是 120px 高的缩略图，放大到 240px 适配高清屏
+            cover: (t.cover_url || '').replace('/h/120/', '/h/240/'),
+            rate: t.rating && t.rating.value,
+            typeName: it.type_name,
+          };
+        });
+      const total = Number(data.total) || 0;
+      return { items, total, hasNext: start + SEARCH_PAGE_SIZE < total };
+    } catch (e) {
+      if (page > 1) throw e;
+      return { items: await suggest(q), total: 0, hasNext: false };
+    }
+  });
+}
+
+function suggest(q) {
   const url = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(q)}`;
   return cached(url, 30 * MIN, async () => {
     const data = await getJSON(url);
@@ -143,10 +175,9 @@ function search(q) {
       .map((s) => ({
         id: s.id,
         title: s.title,
-        subTitle: s.sub_title,
+        subTitle: [s.sub_title, s.episode ? `${s.episode}集` : ''].filter(Boolean).join(' / '),
         year: s.year,
         cover: bigCover(s.img),
-        episode: s.episode,
       }));
   });
 }
@@ -155,4 +186,4 @@ function bigCover(url) {
   return (url || '').replace('/s_ratio_poster/', '/m_ratio_poster/');
 }
 
-module.exports = { MOVIE_TAGS, TV_TAGS, PAGE_SIZE, BILLBOARDS, hotList, collection, detail, search, UA };
+module.exports = { MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, search, UA };

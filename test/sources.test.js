@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { candidates, tokenFor, parseLines } = require('../src/sources');
+const { candidates, tokenFor, parseLines, nameLines } = require('../src/sources');
 
 test('影片匹配要求片名和年份相同，排除同名翻拍和近似片名', () => {
   const html = '<a href="/play/1" class="title-text">影片  1994</a>' +
@@ -28,4 +28,16 @@ test('线路解析保留全部有效选集，拒绝脚本地址及非 JSON 响�
 
 test('页面 token 按站点公开客户端算法生成', () => {
   assert.equal(tokenFor('482774', 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMN'), 'defghijknopqrstuxyz01234789ABCDE');
+});
+
+test('线路名称显示资源站中文名，同站多条线路加序号，兼容旧快照的「代号 · 序号」', () => {
+  const lines = nameLines([
+    { flag: 'gsm3u8', episodes: [] },
+    { name: 'dbm3u8 · 2', episodes: [] },
+    { name: 'dbm3u8 · 3', episodes: [] },
+    { flag: 'abcm3u8', episodes: [] },
+    { flag: '', episodes: [] },
+  ]);
+  assert.deepEqual(lines.map(l => l.name), ['光速资源', '百度资源', '百度资源 2', 'ABC线路', '第三方线路']);
+  assert.equal(lines[1].flag, 'dbm3u8');
 });

@@ -12,6 +12,35 @@ async function get(relative, json = false) {
   return json ? response.json() : response.text();
 }
 
+// 资源站代号 → 中文名（代号来自苹果 CMS 采集站的播放器标识）
+const FLAG_NAMES = {
+  '360zy': '360资源', '1080zyk': '优质资源', bfzym3u8: '暴风资源', dbm3u8: '百度资源', dyttm3u8: '电影天堂',
+  ffm3u8: '非凡资源', gsm3u8: '光速资源', hhm3u8: '豪华资源', hnm3u8: '红牛资源', hym3u8: '虎牙资源',
+  ikm3u8: 'iKun资源', jinyingm3u8: '金鹰资源', jsm3u8: '极速资源', kcm3u8: '快车资源', lzm3u8: '量子资源',
+  mtm3u8: '茅台资源', nnm3u8: '牛牛资源', okm3u8: 'OK资源', rym3u8: '如意资源', sdm3u8: '闪电资源',
+  snm3u8: '索尼资源', subm3u8: '速播资源', tpm3u8: '淘片资源', ukm3u8: 'U酷资源', wjm3u8: '无尽资源',
+  wolong: '卧龙资源', xiguam3u8: '西瓜资源', xlm3u8: '新浪资源', yym3u8: '歪歪资源', zuidam3u8: '最大资源',
+};
+
+function flagName(flag) {
+  if (!flag) return '第三方线路';
+  if (FLAG_NAMES[flag]) return FLAG_NAMES[flag];
+  // 未收录的代号去掉 m3u8 后缀，显示成「XX线路」
+  const code = flag.replace(/m3u8$/i, '').toUpperCase();
+  return code ? code + '线路' : '第三方线路';
+}
+
+// 给线路起名，同一资源站出现多次时加序号区分
+function nameLines(lines) {
+  const seen = {};
+  return lines.map(line => {
+    const flag = line.flag || String(line.name || '').replace(/ · \d+$/, '');
+    const base = flagName(flag);
+    seen[base] = (seen[base] || 0) + 1;
+    return { ...line, flag, name: seen[base] > 1 ? base + ' ' + seen[base] : base };
+  });
+}
+
 function decode(s) {
   return s.replace(/&#(x[\da-f]+|\d+);/gi, (_, n) => {
     const code = n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : Number(n);
@@ -60,14 +89,10 @@ function parseLines(list, videoId) {
           episodes.push({ title: entry.slice(0, split) || '播放', url, type: 'hls' });
         } catch { /* 忽略无效的播放地址 */ }
       }
-      if (episodes.length) lines.push({
-        id: `${videoId}-${item.id}-${index}`,
-        name: `${group.flag || '第三方线路'} · ${lines.length + 1}`,
-        episodes,
-      });
+      if (episodes.length) lines.push({ id: `${videoId}-${item.id}-${index}`, flag: String(group.flag || ''), episodes });
     });
   }
-  return lines;
+  return nameLines(lines);
 }
 
 async function load(detail) {
@@ -102,4 +127,4 @@ function resolve(detail) {
   return promise;
 }
 
-module.exports = { resolve, candidates, tokenFor, parseLines };
+module.exports = { resolve, candidates, tokenFor, parseLines, nameLines, flagName };

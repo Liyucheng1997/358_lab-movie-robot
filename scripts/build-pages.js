@@ -1,10 +1,14 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const views = require('../src/views');
+const sources = require('../src/sources');
 const douban = require('../src/douban');
 const root = path.join(__dirname, '..');
 const out = path.join(root, 'dist');
 const base = '/' + (process.env.PAGES_BASE_PATH || '358_lab-movie-robot').replace(/^\/+|\/+$/g, '') + '/';
+
+// 旧快照里的线路名是「代号 · 序号」，构建时统一换成中文名
+const withNames = s => (s ? { ...s, lines: sources.nameLines(s.lines || []) } : { lines: [], message: '暂无线路快照。' });
 
 function staticHTML(html, date, images = {}) {
   html = html.replace(/\/(?:img|video)\?u=([^"'<>\s\\)]+)/g, (_, u) => decodeURIComponent(u));
@@ -45,11 +49,11 @@ async function main() {
   }
   await write('billboard.html', render(views.billboardPage(data.boards)));
   await write('history.html', render(views.historyPage()));
-  await write('search/index.html', render(views.searchPage('', [])));
+  await write('search/index.html', render(views.searchPage('')));
   await write('404.html', render(views.errorPage(404, '此页面尚未收录到静态快照，请返回首页搜索。')));
   for (const [id, d] of Object.entries(data.details)) {
     await write(`play/${id}/index.html`, render(views.playPage(d)));
-    await write(`api/sources/${id}.json`, JSON.stringify(data.sources[id] || { lines: [], message: '暂无线路快照。' }));
+    await write(`api/sources/${id}.json`, JSON.stringify(withNames(data.sources[id])));
   }
   const catalog = Object.values(data.details).map(d => ({ id: d.id, title: d.title, year: d.year,
     cover: images[d.cover] ? `${base}resources/covers/${images[d.cover]}` : d.cover, aka: d.aka, originalTitle: d.originalTitle }));
