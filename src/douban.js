@@ -55,12 +55,14 @@ function hotList(type, tag, page = 1, limit = PAGE_SIZE) {
 }
 
 // 榜单（m.douban.com 的 subject_collection）
+// short 用作榜单页的切换标签；count 为条目数，默认 10
 const BILLBOARDS = [
-  { id: 'movie_weekly_best', name: '豆瓣一周电影口碑榜' },
-  { id: 'tv_global_best_weekly', name: '豆瓣全球口碑剧集榜' },
-  { id: 'tv_chinese_best_weekly', name: '豆瓣华语口碑剧集榜' },
-  { id: 'show_chinese_best_weekly', name: '豆瓣国内综艺口碑榜' },
-  { id: 'show_global_best_weekly', name: '豆瓣国外综艺口碑榜' },
+  { id: 'movie_weekly_best', name: '豆瓣一周电影口碑榜', short: '一周电影' },
+  { id: 'tv_global_best_weekly', name: '豆瓣全球口碑剧集榜', short: '全球剧集' },
+  { id: 'tv_chinese_best_weekly', name: '豆瓣华语口碑剧集榜', short: '华语剧集' },
+  { id: 'show_chinese_best_weekly', name: '豆瓣国内综艺口碑榜', short: '国内综艺' },
+  { id: 'show_global_best_weekly', name: '豆瓣国外综艺口碑榜', short: '国外综艺' },
+  { id: 'movie_top250', name: '豆瓣电影 Top250', short: 'Top250', count: 250 },
 ];
 
 function collection(id, count = 10) {

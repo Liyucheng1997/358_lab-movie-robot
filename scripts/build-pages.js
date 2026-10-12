@@ -47,7 +47,9 @@ async function main() {
     const url = decodeURIComponent(views.hotUrl(list.type, list.tag));
     await write(url.slice(1), render(views.hotPage({ ...list, tags, page: 1, hasNext: false })));
   }
-  await write('billboard.html', render(views.billboardPage(data.boards)));
+  // 旧快照没有标签短名，按当前榜单配置补齐
+  const boards = data.boards.map(b => ({ ...b, short: douban.BILLBOARDS.find(x => x.id === b.id)?.short }));
+  await write('billboard.html', render(views.billboardPage(boards)));
   await write('history.html', render(views.historyPage()));
   await write('search/index.html', render(views.searchPage('')));
   await write('404.html', render(views.errorPage(404, '此页面尚未收录到静态快照，请返回首页搜索。')));

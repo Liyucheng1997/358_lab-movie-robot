@@ -99,14 +99,14 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <meta name="description" content="${esc(description || title || SITE_NAME)}">
   <link rel="icon" href="/resources/logo.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=4">
+  <link rel="stylesheet" href="/resources/common.css?v=5">
 </head>
 <body>
 ${header}
 ${topNav(active, isIndex)}
 ${body}
 ${bottomNav(active)}
-<script src="/resources/common.js?v=3"></script>
+<script src="/resources/common.js?v=4"></script>
 ${scripts}
 </body>
 </html>`;
@@ -196,45 +196,52 @@ function hotPage({ type, tag, tags, page, items, hasNext }) {
   return layout({ title: `${tag}${kind}-第${page}页`, body, active: type });
 }
 
+function boardItems(b) {
+  if (b.error) return '<p class="text-muted">榜单加载失败，请稍后刷新重试。</p>';
+  if (!b.items.length) return '<p class="text-muted empty">暂无内容</p>';
+  return `<div class="board-list">${b.items
+    .map(
+      (m) => `
+    <a class="result-info board-item" href="/play/${m.id}">
+      <div class="item-root">
+        <span class="board-rank${m.rank <= 3 ? ' top' : ''}">${m.rank}</span>
+        <img class="cover lazy" src="${BLANK}" data-src="${esc(img(m.cover))}" alt="${esc(m.title)}">
+        <div class="detail">
+          <h2 class="meta title">${esc(m.title)}${m.rate ? ` <span class="score">${esc(m.rate)}</span>` : ''}</h2>
+          <h3 class="meta">${esc(m.year)}</h3>
+          <h3 class="meta">${esc(m.region)}</h3>
+          <h3 class="meta">${esc(m.people)}</h3>
+        </div>
+      </div>
+    </a>`
+    )
+    .join('')}</div>`;
+}
+
+// 榜单页：顶部标签切换，一次只显示一个榜单；地址带 #榜单ID 可直接打开对应榜单
 function billboardPage(boards) {
+  const tabs = boards
+    .map(
+      (b, i) =>
+        `<li role="presentation"${i === 0 ? ' class="active"' : ''}><a href="#${esc(b.id)}" role="tab" id="tab-${esc(b.id)}" aria-controls="board-${esc(b.id)}" aria-selected="${i === 0}">${esc(b.short || b.name)}</a></li>`
+    )
+    .join('');
+  const panels = boards
+    .map(
+      (b, i) => `
+  <section class="billboard" id="board-${esc(b.id)}" role="tabpanel" aria-labelledby="tab-${esc(b.id)}"${i === 0 ? '' : ' hidden'}>
+    <h4>${esc(b.name)}${b.updatedAt ? ` <small>${esc(b.updatedAt)}更新</small>` : ''}</h4>
+    ${b.description ? `<p class="text-muted small">${esc(b.description)}</p>` : ''}
+    ${boardItems(b)}
+  </section>`
+    )
+    .join('');
   const body = `
 <div class="container main" style="margin-top: 15px;">
-  <div class="row">
-    ${boards
-      .map(
-        (b) => `
-    <div class="col-xs-12 col-md-6">
-      <div class="billboard">
-        <h4>${esc(b.name)} <small>${esc(b.updatedAt)}更新</small></h4>
-        <p class="text-muted small">${esc(b.description)}</p>
-        ${
-          b.error
-            ? '<p class="text-muted">榜单加载失败，请稍后刷新重试。</p>'
-            : b.items
-                .map(
-                  (m) => `
-        <a class="result-info board-item" href="/play/${m.id}">
-          <div class="item-root">
-            <span class="board-rank${m.rank <= 3 ? ' top' : ''}">${m.rank}</span>
-            <img class="cover lazy" src="${BLANK}" data-src="${esc(img(m.cover))}" alt="${esc(m.title)}">
-            <div class="detail">
-              <h2 class="meta title">${esc(m.title)}${m.rate ? ` <span class="score">${esc(m.rate)}</span>` : ''}</h2>
-              <h3 class="meta">${esc(m.year)}</h3>
-              <h3 class="meta">${esc(m.region)}</h3>
-              <h3 class="meta">${esc(m.people)}</h3>
-            </div>
-          </div>
-        </a>`
-                )
-                .join('')
-        }
-      </div>
-    </div>`
-      )
-      .join('')}
-  </div>
+  <ul class="nav nav-pills board-tabs" role="tablist">${tabs}</ul>
+  ${panels}
 </div>`;
-  return layout({ title: '影视排行榜', body, active: 'billboard' });
+  return layout({ title: '影视排行榜', body, active: 'billboard', scripts: '<script>initBoardTabs();</script>' });
 }
 
 const searchUrl = (q, page = 1) => `/search?q=${encodeURIComponent(q)}${page > 1 ? `&page=${page}` : ''}`;

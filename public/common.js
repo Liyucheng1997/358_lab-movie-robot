@@ -85,6 +85,32 @@
     });
   };
 
+  // ---------- 榜单切换 ----------
+  window.initBoardTabs = function () {
+    var tabs = [].slice.call(document.querySelectorAll('.board-tabs a'));
+    function show(id) {
+      var tab = tabs.filter(function (a) { return a.hash === '#' + id; })[0] || tabs[0];
+      tabs.forEach(function (a) {
+        var on = a === tab;
+        a.parentNode.classList.toggle('active', on);
+        a.setAttribute('aria-selected', on);
+        document.getElementById(a.getAttribute('aria-controls')).hidden = !on;
+      });
+      if (tab.scrollIntoView && tab.parentNode.parentNode.scrollWidth > tab.parentNode.parentNode.clientWidth) {
+        tab.scrollIntoView({ block: 'nearest', inline: 'center' });
+      }
+    }
+    tabs.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        history.replaceState(null, '', a.hash);
+        show(a.hash.slice(1));
+      });
+    });
+    window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+    show(location.hash.slice(1));
+  };
+
   window.fillSearch = function (q) {
     document.querySelectorAll('input[name=q]').forEach(function (i) { i.value = q; });
   };

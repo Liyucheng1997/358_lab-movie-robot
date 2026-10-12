@@ -31,8 +31,9 @@ async function main() {
       return { ...c, items: [] };
     }
   });
+  // 每部影片都要抓详情、线路和海报，Top250 在静态版只收录前 50 部
   const boards = await pool(douban.BILLBOARDS, async b => {
-    try { return { ...b, ...await douban.collection(b.id) }; }
+    try { return { ...b, ...await douban.collection(b.id, Math.min(b.count || 10, 50)) }; }
     catch { return { ...b, items: [], description: '', updatedAt: '', error: true }; }
   });
   const ids = [...new Set([...lists.flatMap(l => l.items), ...boards.flatMap(b => b.items)].map(m => String(m.id)))];

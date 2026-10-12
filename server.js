@@ -83,7 +83,7 @@ async function billboard(res) {
   const boards = await Promise.all(
     douban.BILLBOARDS.map((b) =>
       douban
-        .collection(b.id)
+        .collection(b.id, b.count)
         .then((c) => ({ ...b, ...c }))
         .catch(() => ({ ...b, items: [], updatedAt: '', description: '', error: true }))
     )

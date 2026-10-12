@@ -89,10 +89,19 @@ a.result-info:hover { text-decoration: none; background: #f7f7f7; }
 .score { color: #e09015; font-weight: 600; }
 .cover.lazy { height: 91px; object-fit: cover; }
 
+.board-tabs { margin-bottom: 15px; border-bottom: 1px solid #eaeaea; padding-bottom: 10px; }
+.board-tabs > li + li { margin-left: 6px; }
+.board-tabs > li > a { padding: 6px 16px; border-radius: 16px; color: #555; }
+.board-tabs > li > a:hover { background: #f4f5f7; }
+.board-tabs > li.active > a, .board-tabs > li.active > a:hover, .board-tabs > li.active > a:focus { background: #00a1d6; color: #fff; }
+.board-tabs > li > a:focus { outline: 0; }
+.board-tabs > li > a:focus-visible { outline: 2px solid #00a1d6; outline-offset: 2px; }
 .billboard { margin-bottom: 30px; }
+.billboard[hidden] { display: none; }
 .billboard h4 small { font-size: 12px; margin-left: 6px; }
+@media (min-width: 992px) { .board-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 30px; } }
 .board-item { border-bottom: 1px solid #f2f2f2; padding-bottom: 5px; }
-.board-rank { width: 24px; flex: none; text-align: center; margin-top: 38px; color: #999; font-weight: 600; }
+.board-rank { width: 28px; flex: none; text-align: center; margin-top: 38px; color: #999; font-weight: 600; }
 .board-rank.top { color: #e6544b; }
 .search-list .result-info .cover { width: 80px; max-height: 112px; height: 112px; }
 
@@ -241,8 +250,12 @@ a.result-info:hover { text-decoration: none; background: #f7f7f7; }
   /* 榜单 / 搜索结果 */
   .article-list li { line-height: 40px; }
   .billboard h4 { font-size: 17px; }
+  .board-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 0 -12px 12px; padding: 0 12px 8px; scrollbar-width: none; }
+  .board-tabs::-webkit-scrollbar { display: none; }
+  .board-tabs > li { float: none; flex: none; }
+  .board-tabs > li > a { padding: 5px 14px; background: #f4f5f7; font-size: 14px; }
   .cover { border-radius: 4px; margin: 5px 12px 5px 4px; }
-  .board-rank { width: 20px; margin-top: 36px; }
+  .board-rank { width: 24px; margin-top: 36px; }
   .result-info .detail h3 { line-height: 1.7; }
   .search-list .result-info .cover { width: 72px; height: 100px; }
 
