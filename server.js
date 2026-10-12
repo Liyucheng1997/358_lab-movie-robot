@@ -125,7 +125,9 @@ async function route(req, res) {
     try {
       return send(res, 200, views.playPage(await douban.detail(playMatch[1])));
     } catch (e) {
-      return send(res, 404, views.errorPage(404, e.message));
+      if (e.notFound) return send(res, 404, views.errorPage(404, e.message));
+      console.error('影片详情加载失败:', e.message);
+      return send(res, 502, views.errorPage(502, '数据源暂时无法访问，请稍后刷新重试。'));
     }
   }
 

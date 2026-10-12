@@ -18,7 +18,11 @@ async function getJSON(url, referer = 'https://movie.douban.com/') {
     headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json' },
     signal: AbortSignal.timeout(15000),
   });
-  if (!res.ok) throw new Error(`豆瓣接口返回 ${res.status}: ${url}`);
+  if (!res.ok) {
+    const err = new Error(`豆瓣接口返回 ${res.status}: ${url}`);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -86,20 +90,27 @@ function collection(id, count = 10) {
   });
 }
 
-// 影片详情：先按电影查，失败再按剧集查
+// 影片详情：subject 接口电影、剧集通用；movie/tv 接口会被豆瓣按 IP 单独限流（subject_ip_rate_limit），只作后备
 function detail(id) {
-  if (!/^\d+$/.test(id)) return Promise.reject(new Error('无效的影片 ID'));
+  if (!/^\d+$/.test(id)) return Promise.reject(Object.assign(new Error('无效的影片 ID'), { notFound: true }));
   return cached(`detail:${id}`, 30 * MIN, async () => {
     let d;
-    for (const kind of ['movie', 'tv']) {
+    let failure;
+    for (const kind of ['subject', 'movie', 'tv']) {
       try {
         d = await getJSON(`https://m.douban.com/rexxar/api/v2/${kind}/${id}`, 'https://m.douban.com/');
         if (d && d.title) break;
       } catch (e) {
         d = null;
+        if (e.status === 404 && kind === 'subject') break; // subject 不分类型，404 即确实不存在
+        if (e.status !== 404) failure = e;
       }
     }
-    if (!d || !d.title) throw new Error('未找到该影片');
+    if (!d || !d.title) {
+      // 只有全部接口都明确返回 404 才算影片不存在；限流或网络错误交给调用方按 502 处理
+      if (failure) throw failure;
+      throw Object.assign(new Error('未找到该影片'), { notFound: true });
+    }
     return {
       id: d.id,
       title: d.title,
