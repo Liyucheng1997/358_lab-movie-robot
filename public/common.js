@@ -111,6 +111,23 @@
     show(location.hash.slice(1));
   };
 
+  // ---------- 深浅色切换：手动选择存本地，否则跟随系统 ----------
+  (function () {
+    var root = document.documentElement;
+    var media = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+    function saved() { try { return localStorage.getItem('theme'); } catch (e) { return null; } }
+    document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+      });
+    });
+    if (media && media.addEventListener) media.addEventListener('change', function (e) {
+      if (!saved()) root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+    });
+  })();
+
   window.fillSearch = function (q) {
     document.querySelectorAll('input[name=q]').forEach(function (i) { i.value = q; });
   };
