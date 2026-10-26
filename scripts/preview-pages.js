@@ -4,7 +4,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../dist');
 const base = '/' + (process.env.PAGES_BASE_PATH || '358_lab-movie-robot').replace(/^\/+|\/+$/g, '') + '/';
 const port = Number(process.env.PREVIEW_PORT) || 4173;
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.mjs': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);

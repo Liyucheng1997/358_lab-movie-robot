@@ -26,6 +26,8 @@ const ICONS = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sparkles: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M16 7l3 3M18 5l2 2"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const icon = (name, size = 18) =>
@@ -99,7 +101,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=6">
+  <link rel="stylesheet" href="/resources/common.css?v=7">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -157,9 +159,50 @@ function rankList(title, items, moreHref) {
 </aside>`;
 }
 
+// AI 选片：浏览器用访客自己的 API Key 直接调用 Claude，逻辑在 public/ai.js
+const AI_EXAMPLES = ['下雨的周末，想看治愈系日本电影', '烧脑反转的悬疑片，像《消失的爱人》那种', '适合全家一起看的动画',
+  '九十年代的港片经典', '节奏快、一晚上能追完一季的美剧'];
+
+function aiPanel() {
+  return `
+<section class="card ai-panel" id="ai-panel" aria-labelledby="ai-title">
+  <div class="card-head ai-head">
+    <div>
+      <div class="eyebrow">AI PICKS</div>
+      <h2 class="section-h" id="ai-title">说说你想看什么</h2>
+      <p class="card-desc">用一句话描述心情、场合或口味，Claude Opus 5.5 帮你挑片。</p>
+    </div>
+    <button type="button" class="pill-btn pill-btn-sm ai-key-btn" aria-haspopup="dialog">${icon('key', 15)}<span class="ai-key-label">API Key</span><span class="ai-key-dot" aria-hidden="true"></span></button>
+  </div>
+  <form class="ai-form" onsubmit="return false">
+    <textarea class="ai-input" name="prompt" rows="2" maxlength="500" placeholder="比如：下班后想放空，来点轻松好笑、不费脑子的电影" aria-label="描述你想看的影片"></textarea>
+    <button type="submit" class="pill-btn pill-btn-primary ai-submit">${icon('sparkles', 16)}<span>推荐</span></button>
+  </form>
+  <ul class="ai-examples">${AI_EXAMPLES.map((t) => `<li><button type="button">${esc(t)}</button></li>`).join('')}</ul>
+  <p class="ai-status" role="status" aria-live="polite" hidden></p>
+  <div class="ai-results" hidden></div>
+</section>
+<dialog class="ai-dialog" aria-labelledby="ai-dialog-title">
+  <form method="dialog" class="ai-dialog-body">
+    <div class="ai-dialog-icon">${icon('key', 22)}</div>
+    <h2 class="ai-dialog-title" id="ai-dialog-title">设置 Claude API Key</h2>
+    <p class="ai-dialog-desc">AI 选片从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
+    <input class="ai-key-input" type="password" name="key" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API Key">
+    <p class="ai-dialog-hint"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">在 Anthropic Console 创建 Key</a><span class="ai-dialog-error" role="alert"></span></p>
+    <div class="ai-dialog-actions">
+      <button type="button" class="pill-btn pill-btn-danger ai-key-clear">清除</button>
+      <span class="topbar-spacer"></span>
+      <button type="button" class="pill-btn ai-key-cancel">取消</button>
+      <button type="submit" class="pill-btn pill-btn-primary" value="save">保存</button>
+    </div>
+  </form>
+</dialog>`;
+}
+
 function homePage({ movies, tvs, weekly }) {
   const body = `
 <div class="container main">
+  ${aiPanel()}
   <div class="row">
     <div class="col-xs-12 col-md-8">
       <section class="v-list">
@@ -176,7 +219,10 @@ function homePage({ movies, tvs, weekly }) {
     </div>
   </div>
 </div>`;
-  return layout({ title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：热门电影、热门剧集、口碑榜单` });
+  return layout({
+    title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：AI 选片、热门电影、热门剧集、口碑榜单`,
+    scripts: '<script type="module" src="/resources/ai.js?v=1"></script>',
+  });
 }
 
 function hotPage({ type, tag, tags, page, items, hasNext }) {

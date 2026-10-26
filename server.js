@@ -11,6 +11,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
@@ -128,6 +129,20 @@ async function route(req, res) {
       if (e.notFound) return send(res, 404, views.errorPage(404, e.message));
       console.error('影片详情加载失败:', e.message);
       return send(res, 502, views.errorPage(502, '数据源暂时无法访问，请稍后刷新重试。'));
+    }
+  }
+
+  // AI 选片用来把推荐的片名对应到豆瓣条目
+  if (pathname === '/api/search') {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
+    if (!q) return res.end(JSON.stringify({ items: [] }));
+    try {
+      return res.end(JSON.stringify({ items: (await douban.search(q, 1)).items }));
+    } catch (e) {
+      console.error('搜索接口失败:', e.message);
+      res.statusCode = 502;
+      return res.end(JSON.stringify({ items: [] }));
     }
   }
 

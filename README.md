@@ -45,12 +45,13 @@ npm run dev          # 修改代码后自动重启
 
 | URL | 说明 |
 | --- | --- |
-| `/` | 首页：搜索框 + 热门电影 / 热门剧集 + 一周口碑榜 |
+| `/` | 首页：搜索框 + AI 选片 + 热门电影 / 热门剧集 + 一周口碑榜 |
 | `/hot/index-movie-{标签}.html`、`-p-{页}.html` | 电影分类（热门、最新、经典、豆瓣高分…豆瓣top250），每页 24 部 |
 | `/hot/index-tv-{标签}.html` | 剧集分类（热门、美剧、英剧、韩剧、日剧、国产剧…） |
 | `/billboard.html` | 榜单：五大口碑榜 + 豆瓣电影 Top250，标签切换，`#榜单ID` 直达（如 `#movie_top250`） |
 | `/search?q=&page=` | 搜索（豆瓣移动版搜索接口，每页 20 条，支持片名和演职人员） |
 | `/play/{豆瓣ID}` | 详情页：第三方 M3U8 多线路播放、选集、豆瓣官方预告、正版平台、影片信息 |
+| `/api/search?q=` | 豆瓣搜索的 JSON 版，供 AI 选片把推荐片名对应到站内条目 |
 | `/api/sources/{豆瓣ID}` | 按片名和年份匹配 ikanbot 条目，返回全部有效线路和选集 |
 | `/history.html` | 播放历史（存在浏览器 localStorage） |
 
@@ -60,6 +61,15 @@ npm run dev          # 修改代码后自动重启
 - `src/douban.js`：豆瓣接口封装，带内存缓存（列表 30 分钟、榜单 1 小时）
 - `src/views.js`：服务端渲染模板（Bootstrap 3）
 - `public/`：样式、脚本（懒加载、播放历史、预告片切换）、logo
+
+## AI 选片
+
+首页可以用自然语言描述想看的内容（如「下雨的周末，想看治愈系日本电影」），由 Claude Opus 5.5（`claude-opus-5-5`）推荐 6 部影片并说明理由，「换一批」会排除已推荐过的片子。
+
+- 访客点「API Key」填入自己的 Anthropic API Key（[在 Console 创建](https://console.anthropic.com/settings/keys)）。Key 只存在该浏览器的 localStorage，由浏览器直接请求 `api.anthropic.com`，不经过本站服务器，费用计入访客自己的账号。部分地区需要代理才能连上。
+- 使用官方 [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) 1.3.0，以 esbuild 打包为单文件 `public/vendor/anthropic-sdk.mjs`（许可证同目录），点推荐时才按需加载。请求使用结构化输出（JSON Schema）、`effort: low` 以缩短等待，并开启服务端拒答回退（`fallbacks: "default"`）。
+- 推荐结果按片名、原名和年份（容差 1 年）回查：实时版查豆瓣搜索，命中后显示海报、评分并直达播放页，未命中转站内搜索；静态版把已收录片单交给 Claude 优先挑选，只在快照里匹配，未收录的链接到豆瓣。
+- 逻辑在 `public/ai.js`；更新 SDK 时重新打包：`npx esbuild entry.mjs --bundle --format=esm --platform=browser --minify --legal-comments=eof`，其中 `entry.mjs` 为 `export { default } from "@anthropic-ai/sdk";`。
 
 ## 与原站的区别
 
