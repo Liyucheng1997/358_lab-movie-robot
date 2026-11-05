@@ -442,6 +442,49 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
 .ai-dialog-actions [hidden] { display: none; }
 @keyframes ai-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
 
+/* ---------- 个性化推荐 ---------- */
+.rec-section[hidden], .rec-starter[hidden], .rec-sentinel[hidden], .rec-status[hidden] { display: none; }
+.rec-actions { display: flex; align-items: center; gap: 12px; flex: none; }
+.rec-actions .pill-btn { gap: 6px; }
+.rec-status { margin: -4px 0 12px; font-size: 13px; }
+.rec-undo { margin-left: 4px; padding: 0; border: 0; background: none; color: var(--primary); font-weight: 500; }
+.rec-item { position: relative; transition: opacity .2s, transform .2s var(--ease-out); }
+.rec-item.is-removing { opacity: 0; transform: scale(.94); }
+.v-list .rec-item p { margin-bottom: 2px; }
+.rec-reason {
+  display: block; margin-bottom: 16px; overflow: hidden; color: var(--text-3); font-size: 12px; line-height: 18px;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.rec-reason.is-related { color: var(--primary); }
+.rec-reason.is-explore { color: var(--success); }
+.rec-dislike {
+  position: absolute; top: 6px; right: 14px; z-index: 2; display: grid; place-items: center; width: 24px; height: 24px;
+  padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; opacity: 0; transition: opacity .15s, transform .15s;
+}
+.rec-item:hover .rec-dislike, .rec-dislike:focus-visible { opacity: 1; }
+.rec-dislike:active { transform: scale(.9); }
+@media (hover: none) { .rec-dislike { opacity: .85; } }
+.rec-starter { margin-top: 4px; }
+.rec-starter-title { margin: 0 0 10px; color: var(--text-2); font-size: 13px; font-weight: 500; }
+.rec-genres { margin-bottom: 0; }
+.rec-sentinel { height: 1px; }
+
+.rec-taste { margin-bottom: 28px; }
+.rec-interests { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 24px; margin-bottom: 20px; }
+.rec-interest { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 8px; }
+.rec-interest-name { font-size: 14px; font-weight: 500; }
+.rec-interest small { color: var(--text-3); font-size: 11px; }
+.rec-interest-bar { grid-column: 1 / -1; height: 4px; border-radius: 99px; background: var(--fill); overflow: hidden; }
+.rec-interest-bar i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+.rec-taste-empty { grid-column: 1 / -1; color: var(--text-3); font-size: 13px; }
+
+.play-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.play-actions .pill-btn { gap: 6px; }
+.like-btn.is-on { background: var(--danger-bg); color: var(--danger); }
+.like-btn.is-on .ico { fill: currentColor; }
+.dislike-btn.is-on { background: var(--fill); color: var(--text-3); }
+#rec-related { margin-top: 16px; }
+
 /* ---------- 底部标签栏（窄屏） ---------- */
 .tabbar { display: none; }
 
@@ -502,6 +545,9 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
   .v-list .item .cover-wp { border-radius: 10px; }
   .v-list .item p { margin: 6px 0 14px; min-height: 38px; font-size: 13px; line-height: 19px; }
   .v-list .item .rate { right: 4px; bottom: 4px; padding: 0 6px; font-size: 11px; }
+  .rec-dislike { top: 4px; right: 9px; width: 22px; height: 22px; }
+  .rec-reason { margin-bottom: 12px; font-size: 11px; }
+  .rec-interests { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
 
   .ai-panel { margin-bottom: 24px; padding: 18px 16px 20px; }
   .ai-head .ai-key-label { display: none; }

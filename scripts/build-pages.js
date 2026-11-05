@@ -3,6 +3,7 @@ const path = require('node:path');
 const views = require('../src/views');
 const sources = require('../src/sources');
 const douban = require('../src/douban');
+const recommend = require('../src/recommend');
 const root = path.join(__dirname, '..');
 const out = path.join(root, 'dist');
 const base = '/' + (process.env.PAGES_BASE_PATH || '358_lab-movie-robot').replace(/^\/+|\/+$/g, '') + '/';
@@ -51,6 +52,7 @@ async function main() {
   const boards = data.boards.map(b => ({ ...b, short: douban.BILLBOARDS.find(x => x.id === b.id)?.short }));
   await write('billboard.html', render(views.billboardPage(boards)));
   await write('history.html', render(views.historyPage()));
+  await write('foryou.html', render(views.forYouPage()));
   await write('search/index.html', render(views.searchPage('')));
   await write('404.html', render(views.errorPage(404, '此页面尚未收录到静态快照，请返回首页搜索。')));
   for (const [id, d] of Object.entries(data.details)) {
@@ -60,8 +62,11 @@ async function main() {
   const catalog = Object.values(data.details).map(d => ({ id: d.id, title: d.title, year: d.year,
     cover: images[d.cover] ? `${base}resources/covers/${images[d.cover]}` : d.cover, aka: d.aka, originalTitle: d.originalTitle }));
   await write('catalog.json', JSON.stringify(catalog));
+  // 推荐候选池：只收录有详情页的影片，特征取自完整详情
+  const recPool = recommend.buildPool(data, u => (images[u] ? `${base}resources/covers/${images[u]}` : u), id => !!data.details[id]);
+  await write('rec/pool.json', JSON.stringify({ items: recPool }));
   await write('.nojekyll', '');
-  console.log(`Pages 构建完成: ${catalog.length} 部影片，路径 ${base}`);
+  console.log(`Pages 构建完成: ${catalog.length} 部影片，推荐候选 ${recPool.length} 部，路径 ${base}`);
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exitCode = 1; });

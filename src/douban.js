@@ -146,6 +146,13 @@ function detail(id) {
   });
 }
 
+// 「喜欢这部的人也喜欢」：豆瓣基于用户行为的相关推荐（物品协同过滤），subject 接口电影、剧集通用
+function related(id) {
+  if (!/^\d+$/.test(id)) return Promise.reject(Object.assign(new Error('无效的影片 ID'), { notFound: true }));
+  const url = `https://m.douban.com/rexxar/api/v2/subject/${id}/recommendations?count=20`;
+  return cached(url, 6 * 60 * MIN, () => getJSON(url, 'https://m.douban.com/'));
+}
+
 const SEARCH_PAGE_SIZE = 20;
 
 // 移动版搜索接口，支持分页，也能按演职人员搜索；失败时退回搜索建议接口（只有第一页、约 10 条）
@@ -199,4 +206,4 @@ function bigCover(url) {
   return (url || '').replace('/s_ratio_poster/', '/m_ratio_poster/');
 }
 
-module.exports = { MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, search, UA };
+module.exports = { MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, related, search, UA };

@@ -5,6 +5,7 @@ const { Readable } = require('stream');
 const douban = require('./src/douban');
 const views = require('./src/views');
 const sources = require('./src/sources');
+const recommend = require('./src/recommend');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -108,6 +109,34 @@ async function route(req, res) {
 
   if (pathname === '/billboard.html') return billboard(res);
   if (pathname === '/history.html') return send(res, 200, views.historyPage());
+  if (pathname === '/foryou.html') return send(res, 200, views.forYouPage());
+
+  // 推荐候选池和相关影片：排序在浏览器里按本地行为画像完成，服务端不保存任何用户数据
+  if (pathname === '/api/rec/pool') {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const items = await recommend.livePool();
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      return res.end(JSON.stringify({ items }));
+    } catch (e) {
+      console.error('推荐候选池加载失败:', e.message);
+      res.statusCode = 502;
+      return res.end(JSON.stringify({ items: [] }));
+    }
+  }
+  const relatedMatch = pathname.match(/^\/api\/rec\/related\/(\d+)$/);
+  if (relatedMatch) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const items = await recommend.liveRelated(relatedMatch[1]);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.end(JSON.stringify({ items }));
+    } catch (e) {
+      console.error('相关推荐加载失败:', e.message);
+      res.statusCode = 502;
+      return res.end(JSON.stringify({ items: [] }));
+    }
+  }
 
   if (pathname === '/search') {
     const q = (url.searchParams.get('q') || '').trim().slice(0, 100);

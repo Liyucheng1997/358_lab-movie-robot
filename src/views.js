@@ -28,6 +28,8 @@ const ICONS = {
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   sparkles: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M16 7l3 3M18 5l2 2"/>',
+  heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.3a4.9 4.9 0 0 1 7.5 6.3z"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const icon = (name, size = 18) =>
@@ -44,6 +46,7 @@ function searchForm(isIndex) {
 
 const NAV = [
   ['home', '/', 'home', '首页'],
+  ['foryou', '/foryou.html', 'compass', '推荐'],
   ['movie', hotUrl('movie', '热门'), 'film', '电影'],
   ['tv', hotUrl('tv', '热门'), 'tv', '剧集'],
   ['billboard', '/billboard.html', 'chart', '榜单'],
@@ -101,14 +104,14 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=7">
+  <link rel="stylesheet" href="/resources/common.css?v=8">
 </head>
 <body>
 ${topbar(active, isIndex)}
 ${isIndex ? hero() : ''}
 ${body}
 ${bottomNav(active)}
-<script src="/resources/common.js?v=5"></script>
+<script src="/resources/common.js?v=6"></script>
 ${scripts}
 </body>
 </html>`;
@@ -199,10 +202,39 @@ function aiPanel() {
 </dialog>`;
 }
 
+// 个性化推荐：脚本在浏览器里按本地行为画像排序（public/rec-core.js + public/rec.js）
+const REC_SCRIPTS = '<script src="/resources/rec-core.js?v=1"></script><script src="/resources/rec.js?v=1"></script>';
+
+function recHead(withMore) {
+  return `
+<div class="section-head">
+  <div><div class="eyebrow">${withMore ? 'FOR YOU' : 'FEED'}</div><h2 class="section-h">${withMore ? '为你推荐' : '猜你喜欢'}</h2></div>
+  <div class="rec-actions">
+    <button type="button" class="pill-btn pill-btn-sm rec-refresh">${icon('refresh', 14)}换一批</button>
+    ${withMore ? '<a class="more-link" href="/foryou.html">更多<span aria-hidden="true">›</span></a>' : ''}
+  </div>
+</div>`;
+}
+
+// 冷启动时让新访客挑几个喜欢的类型
+function recStarter() {
+  return `
+<div class="rec-starter" hidden>
+  <p class="rec-starter-title">选几个喜欢的类型，推荐会更懂你</p>
+  <ul class="chips rec-genres"></ul>
+</div>`;
+}
+
 function homePage({ movies, tvs, weekly }) {
   const body = `
 <div class="container main">
   ${aiPanel()}
+  <section class="v-list rec-section" id="rec-home" data-size="12" hidden>
+    ${recHead(true)}
+    <p class="rec-status text-muted" role="status" aria-live="polite"></p>
+    <div class="row list-wp rec-grid"></div>
+    ${recStarter()}
+  </section>
   <div class="row">
     <div class="col-xs-12 col-md-8">
       <section class="v-list">
@@ -221,7 +253,7 @@ function homePage({ movies, tvs, weekly }) {
 </div>`;
   return layout({
     title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：AI 选片、热门电影、热门剧集、口碑榜单`,
-    scripts: '<script type="module" src="/resources/ai.js?v=1"></script>',
+    scripts: `<script type="module" src="/resources/ai.js?v=1"></script>${REC_SCRIPTS}`,
   });
 }
 
@@ -409,6 +441,10 @@ function playPage(d) {
       <div class="play-head">
         <h1 id="video_title">${esc(d.title)}</h1>
         ${mobileMeta.length ? `<p class="play-meta">${mobileMeta.join('<span class="dot">·</span>')}</p>` : ''}
+        <div class="play-actions">
+          <button type="button" class="pill-btn pill-btn-sm like-btn" aria-pressed="false">${icon('heart', 15)}<span>喜欢</span></button>
+          <button type="button" class="pill-btn pill-btn-sm dislike-btn" aria-pressed="false"><span>不感兴趣</span></button>
+        </div>
       </div>
       <section class="card play-card">
         <div class="card-head source-heading">
@@ -452,14 +488,53 @@ function playPage(d) {
       </aside>
     </div>
   </div>
+  <section class="v-list rec-section" id="rec-related" hidden>
+    ${sectionHead('MORE LIKE THIS', '看过这部的人也喜欢')}
+    <div class="row list-wp rec-grid"></div>
+  </section>
 </div>`;
-  const record = { id: d.id, title: d.title, cover: img(d.cover), year: d.year };
+  // meta 是推荐用的影片特征：类型、地区、导演和前 3 位主演、年代
+  const record = {
+    id: d.id, title: d.title, cover: img(d.cover), year: d.year,
+    meta: {
+      type: d.isTv ? (d.genres.includes('真人秀') ? 'show' : 'tv') : 'movie',
+      genres: d.genres, countries: d.countries, people: [...d.directors.slice(0, 1), ...d.actors.slice(0, 3)], year: d.year,
+    },
+  };
   return layout({
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=5"></script><script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=5"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
+}
+
+function forYouPage() {
+  const body = `
+<div class="container main">
+  <div class="page-head page-head-row">
+    <div><div class="eyebrow">FOR YOU</div><h1 class="page-title">为你推荐</h1></div>
+  </div>
+  <section class="card rec-taste" id="rec-taste">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title">我的口味</h2>
+        <p class="card-desc">根据你在本站的观看时长、喜欢和不感兴趣实时更新，数据只保存在当前浏览器。</p>
+      </div>
+      <button type="button" class="pill-btn pill-btn-sm pill-btn-danger rec-reset">重置</button>
+    </div>
+    <ul class="rec-interests"></ul>
+    <p class="rec-starter-title">喜欢的类型</p>
+    <ul class="chips rec-genres"></ul>
+  </section>
+  <section class="v-list v-list-wide rec-section" id="rec-feed" data-size="18">
+    ${recHead(false)}
+    <p class="rec-status text-muted" role="status" aria-live="polite">正在生成推荐…</p>
+    <div class="row list-wp rec-grid"></div>
+    <div class="rec-sentinel" aria-hidden="true"></div>
+  </section>
+</div>`;
+  return layout({ title: '为你推荐', body, active: 'foryou', description: '根据观看习惯个性化推荐的电影和剧集', scripts: REC_SCRIPTS });
 }
 
 function historyPage() {
@@ -487,4 +562,4 @@ function errorPage(status, message) {
   return layout({ title: status === 404 ? '页面不存在' : '出错了', body });
 }
 
-module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, historyPage, errorPage, hotUrl };
+module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, errorPage, hotUrl };

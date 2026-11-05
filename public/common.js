@@ -38,9 +38,9 @@
   }
 
   window.initPlay = function (record) {
+    if (window.Rec) window.Rec.onPlayPage(record);
     var list = readHistory().filter(function (r) { return r.id !== record.id; });
-    record.time = Date.now();
-    list.unshift(record);
+    list.unshift({ id: record.id, title: record.title, cover: record.cover, year: record.year, time: Date.now() });
     writeHistory(list.slice(0, 60));
 
     if (window.initSources) window.initSources(record);
