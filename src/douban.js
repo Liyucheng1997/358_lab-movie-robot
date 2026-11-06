@@ -1,4 +1,5 @@
 // 豆瓣公开接口封装 + 内存缓存
+const { vendorIds } = require('./danmaku');
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
@@ -142,6 +143,8 @@ function detail(id) {
         payment: v.payment_desc || (v.is_paid ? '付费' : '免费'),
         episodes: v.episodes_info,
       })),
+      // 正版平台的节目 ID，用来抓对应影片的弹幕
+      danmaku: vendorIds(d.vendors || []),
     };
   });
 }

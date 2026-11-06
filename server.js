@@ -6,6 +6,7 @@ const douban = require('./src/douban');
 const views = require('./src/views');
 const sources = require('./src/sources');
 const recommend = require('./src/recommend');
+const danmaku = require('./src/danmaku');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -93,6 +94,64 @@ async function billboard(res) {
   send(res, 200, views.billboardPage(boards));
 }
 
+function json(res, status, data, cache = 'no-store') {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': cache });
+  res.end(JSON.stringify(data));
+}
+
+// nginx 反向代理时取真实访客 IP；直连时不信任这些请求头
+function clientIP(req) {
+  const remote = req.socket.remoteAddress || '';
+  if (!/^(::1|127\.|::ffff:127\.)/.test(remote)) return remote;
+  return String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || remote).split(',')[0].trim();
+}
+
+function readBody(req, limit = 2048) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limit) { reject(Object.assign(new Error('内容太长'), { status: 413 })); req.destroy(); } else chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+async function danmakuAPI(req, res, id, url) {
+  if (req.method === 'POST') {
+    let input;
+    try { input = JSON.parse(await readBody(req)); } catch (e) { return json(res, e.status || 400, { error: e.status ? e.message : '格式不正确' }); }
+    const item = danmaku.validate(input);
+    if (typeof item === 'string') return json(res, 400, { error: item });
+    const allowed = danmaku.allowSend(clientIP(req));
+    if (allowed !== true) return json(res, 429, { error: allowed });
+    try {
+      await douban.detail(id); // 只接受存在的影片，避免随意创建文件
+      const saved = await danmaku.add(id, item);
+      return json(res, 200, { item: [saved.t, saved.mode, saved.color, saved.text, 'site'] });
+    } catch (e) {
+      if (e.notFound) return json(res, 404, { error: e.message });
+      console.error('弹幕保存失败:', e.message);
+      return json(res, 500, { error: '弹幕保存失败，请稍后再试' });
+    }
+  }
+  const ep = Number(url.searchParams.get('ep'));
+  const seg = Number(url.searchParams.get('seg'));
+  if (!Number.isInteger(ep) || ep < 1 || ep > 5000 || !Number.isInteger(seg) || seg < 0 || seg > 72) {
+    return json(res, 400, { error: '参数不正确', items: [] });
+  }
+  try {
+    const detail = await douban.detail(id);
+    return json(res, 200, await danmaku.segment(detail.danmaku || {}, id, ep, seg), 'public, max-age=60');
+  } catch (e) {
+    if (e.notFound) return json(res, 404, { error: e.message, items: [] });
+    console.error('弹幕加载失败:', e.message);
+    return json(res, 502, { error: '弹幕暂时无法加载', items: [] });
+  }
+}
+
 async function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   let pathname;
@@ -137,6 +196,10 @@ async function route(req, res) {
       return res.end(JSON.stringify({ items: [] }));
     }
   }
+
+  // 弹幕：GET 取一集里一个 5 分钟分段（外部平台 + 本站），POST 发送本站弹幕
+  const danmakuMatch = pathname.match(/^\/api\/danmaku\/(\d+)$/);
+  if (danmakuMatch) return danmakuAPI(req, res, danmakuMatch[1], url);
 
   if (pathname === '/search') {
     const q = (url.searchParams.get('q') || '').trim().slice(0, 100);

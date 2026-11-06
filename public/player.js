@@ -78,8 +78,19 @@
     var probeAbort = null;
     var autoPanel = null; // 自动选中的线路；用户手动选择后为 null
 
+    // 弹幕按「第几集」对应到各平台：优先用选集标题里的集数，标题没有集数时按顺序
+    function episodeNumber(panel, button) {
+      var index = panel.buttons.indexOf(button);
+      var title = String((panel.line.episodes[index] || {}).title || '');
+      var m = title.match(/第\s*0*(\d+)\s*[集话期回]/) || title.match(/^\s*0*(\d+)\s*$/);
+      return m ? Number(m[1]) : index + 1;
+    }
+
     function select(button, url, type, poster, autoplay, panel) {
       selected = true;
+      document.dispatchEvent(new CustomEvent('player:select', {
+        detail: panel ? { kind: 'episode', ep: episodeNumber(panel, button), label: panel.line.name + ' · ' + button.textContent } : { kind: 'trailer' },
+      }));
       selectedType = type;
       autoPanel = autoplay ? null : panel;
       generation++;

@@ -30,6 +30,7 @@ const ICONS = {
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M16 7l3 3M18 5l2 2"/>',
   heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.3a4.9 4.9 0 0 1 7.5 6.3z"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const icon = (name, size = 18) =>
@@ -104,14 +105,14 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=8">
+  <link rel="stylesheet" href="/resources/common.css?v=9">
 </head>
 <body>
 ${topbar(active, isIndex)}
 ${isIndex ? hero() : ''}
 ${body}
 ${bottomNav(active)}
-<script src="/resources/common.js?v=6"></script>
+<script src="/resources/common.js?v=7"></script>
 ${scripts}
 </body>
 </html>`;
@@ -435,6 +436,16 @@ function playPage(d) {
   const body = `
 <div class="container main play-main">
   <div class="embed-responsive embed-responsive-16by9 player-wrap">${player}</div>
+  <div class="dm-bar" id="dm-bar">
+    <button type="button" class="dm-switch active" id="dm-toggle" aria-pressed="true" title="弹幕开关">弹</button>
+    <form class="dm-form" id="dm-form" autocomplete="off">
+      <input id="dm-input" class="dm-input" maxlength="50" enterkeyhint="send" placeholder="发个友善的弹幕见证当下" aria-label="弹幕内容">
+      <button type="submit" class="pill-btn pill-btn-sm pill-btn-primary">发送</button>
+    </form>
+    <button type="button" class="round-btn dm-gear" id="dm-gear" aria-expanded="false" aria-controls="dm-panel" title="弹幕设置">${icon('sliders', 17)}</button>
+  </div>
+  <div class="card dm-panel" id="dm-panel" hidden></div>
+  <p id="dm-status" class="dm-status text-muted" role="status" aria-live="polite"></p>
   <p id="player-status" class="text-muted" role="status" aria-live="polite"></p>
   <div class="row">
     <div class="col-xs-12 col-md-8">
@@ -505,7 +516,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=5"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=6"></script><script src="/resources/danmaku.js?v=3"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 

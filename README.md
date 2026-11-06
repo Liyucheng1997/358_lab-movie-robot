@@ -56,6 +56,7 @@ npm run dev          # 修改代码后自动重启
 | `/api/sources/{豆瓣ID}` | 按片名和年份匹配 ikanbot 条目，返回全部有效线路和选集 |
 | `/api/rec/pool` | 推荐候选池：全部分类第一页 + 全部榜单，带类型/地区/主创/年代特征，缓存 30 分钟 |
 | `/api/rec/related/{豆瓣ID}` | 豆瓣「看过这部的人也喜欢」相关影片，缓存 6 小时 |
+| `/api/danmaku/{豆瓣ID}?ep=&seg=` | 弹幕：第 ep 集（从 1 开始）的第 seg 个 5 分钟分段，合并哔哩哔哩、爱奇艺、腾讯视频和本站弹幕；POST 发送本站弹幕 |
 | `/history.html` | 播放历史（存在浏览器 localStorage） |
 
 ## 结构
@@ -88,6 +89,21 @@ npm run dev          # 修改代码后自动重启
 静态版没有实时接口，候选池在构建时由快照生成（`rec/pool.json`，特征取自完整详情），相关召回改用类型、地区、主创的内容相似度。
 
 算法在 `public/rec-core.js`（纯函数，Node 测试和浏览器共用），行为采集和界面在 `public/rec.js`，候选池构建在 `src/recommend.js`，测试在 `test/recommend.test.js`。
+
+## 弹幕
+
+详情页播放器上方显示弹幕，下方是发送框和设置（开关、不透明度、字号、速度、显示区域、来源筛选、时间校准、发送颜色和位置）。弹幕跟随视频时间，暂停、缓冲时一起停住，拖动进度后从新位置开始；播放器右上角的全屏按钮让播放器连同弹幕一起全屏（iPhone 只能用系统全屏，不显示弹幕）。预告片不显示弹幕。
+
+- **外部弹幕**：豆瓣详情的「正版播放平台」里带有各平台的节目 ID（B 站番剧 season、腾讯视频 cid、爱奇艺 aid/tvid），服务端直接按 ID 取弹幕，不靠片名模糊匹配，没有正版平台信息的影片只有本站弹幕。剧集按选集标题里的「第 N 集」对应各平台第 N 集正片（排除预告、花絮）。
+  - 哔哩哔哩：`api.bilibili.com/x/v1/dm/list.so`，一次取整集（几千条）后按时间切段；跳过高级弹幕。
+  - 爱奇艺：`cmts.iqiyi.com/bullet/…_300_{n}.z`，每 5 分钟一个 zlib 压缩的 XML。
+  - 腾讯视频：`dm.video.qq.com/barrage/segment/{vid}/t/v1/{start}/{end}`，每 30 秒一段；选集来自 `pbaccess.video.qq.com` 的剧集列表接口。
+  - 每个来源每 5 分钟最多保留 300 条，按点赞数优先；结果缓存 1 小时，选集列表缓存 6 小时。某个平台失败时其余来源照常显示。
+  - 这些都是平台网页使用的非公开接口，格式或权限变化时需要更新 `src/danmaku.js`。片源版本不同可能有几秒偏差，可在设置里校准（只影响外部弹幕）。
+- **本站弹幕**：最多 50 字，按影片追加写入 `data/danmaku/{豆瓣ID}.jsonl`（`DATA_DIR` 环境变量可改目录，`data/` 不进 Git），服务器上需要保证运行服务的用户对该目录有写权限。每个 IP 3 秒一条、10 分钟最多 30 条；经 nginx 代理时读取 `X-Real-IP` / `X-Forwarded-For`。弹幕只用 `textContent` 渲染。
+- **静态版**：没有服务端，只显示和保存本机发送的弹幕（localStorage `danmaku_local_v1`）。
+
+服务端在 `src/danmaku.js`，界面在 `public/danmaku.js`，`public/player.js` 选集时发出 `player:select` 事件告诉弹幕当前是第几集，测试在 `test/danmaku.test.js`。
 
 ## 与原站的区别
 

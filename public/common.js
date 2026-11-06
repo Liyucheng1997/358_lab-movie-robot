@@ -43,6 +43,8 @@
     list.unshift({ id: record.id, title: record.title, cover: record.cover, year: record.year, time: Date.now() });
     writeHistory(list.slice(0, 60));
 
+    // 弹幕先初始化，才能收到线路自动选中时的选集事件
+    if (window.initDanmaku) window.initDanmaku(record);
     if (window.initSources) window.initSources(record);
   };
 
