@@ -114,13 +114,21 @@
     if (window.initSources) window.initSources(record);
   };
 
-  // 首页「继续观看」：只列没看完的
+  // 首页侧栏「继续观看」：只列没看完的，紧凑的一行一部
   window.renderContinue = function () {
     var box = document.getElementById('continue-watch');
     if (!box) return;
-    var list = readHistory().filter(function (r) { return r.pos > 30 && !finished(r); }).slice(0, 6);
+    var list = readHistory().filter(function (r) { return r.pos > 30 && !finished(r); }).slice(0, 4);
     if (!list.length) return;
-    box.querySelector('.list-wp').innerHTML = list.map(function (m) { return card(m, false); }).join('');
+    box.querySelector('.continue-list').innerHTML = list.map(function (m) {
+      var pct = m.dur ? Math.min(100, Math.round(m.pos / m.dur * 100)) : 0;
+      return '<li><a href="' + playHref(m.id) + '">' +
+        '<img class="continue-cover" src="' + esc(m.cover) + '" alt="">' +
+        '<span class="continue-body"><span class="continue-title">' + esc(m.title) + '</span>' +
+        '<small class="continue-meta">' + esc(progressText(m)) + '</small>' +
+        (pct ? '<span class="continue-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' : '') +
+        '</span></a></li>';
+    }).join('');
     box.hidden = false;
   };
 

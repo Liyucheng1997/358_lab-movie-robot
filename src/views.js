@@ -110,14 +110,14 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=12">
+  <link rel="stylesheet" href="/resources/common.css?v=13">
 </head>
 <body>
 ${topbar(active, isIndex)}
 ${isIndex ? hero() : ''}
 ${body}
 ${bottomNav(active)}
-<script src="/resources/common.js?v=8"></script>
+<script src="/resources/common.js?v=9"></script>
 ${scripts}
 </body>
 </html>`;
@@ -240,10 +240,6 @@ function recStarter() {
 function homePage({ movies, tvs, weekly }) {
   const body = `
 <div class="container main">
-  <section class="v-list" id="continue-watch" hidden>
-    ${sectionHead('CONTINUE', '继续观看', '/history.html', '全部')}
-    <div class="row list-wp"></div>
-  </section>
   ${aiPanel()}
   <section class="v-list rec-section" id="rec-home" data-size="12" hidden>
     ${recHead(true)}
@@ -263,6 +259,10 @@ function homePage({ movies, tvs, weekly }) {
       </section>
     </div>
     <div class="col-xs-12 col-md-4">
+      <aside class="card continue-card" id="continue-watch" hidden>
+        <div class="card-head"><h2 class="card-title">继续观看</h2><a class="more-link" href="/history.html">播放历史<span aria-hidden="true">›</span></a></div>
+        <ul class="continue-list"></ul>
+      </aside>
       ${weekly ? rankList('一周口碑榜', weekly.items, '/billboard.html') : ''}
     </div>
   </div>

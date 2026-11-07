@@ -240,6 +240,19 @@ a img { border-width: 0; vertical-align: middle; }
 .rank-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-rate { flex: none; color: var(--text-3); font-size: 13px; font-variant-numeric: tabular-nums; }
 
+/* 侧栏「继续观看」 */
+.continue-card { padding: 20px 12px 12px; }
+.continue-card[hidden] { display: none; }
+.continue-card .card-head { padding: 0 12px; }
+.continue-list a { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r); color: var(--text); transition: background .15s; }
+.continue-list a:hover { background: var(--panel-2); color: var(--text); }
+.continue-cover { width: 40px; height: 56px; flex: none; border-radius: 6px; object-fit: cover; background: var(--poster); }
+.continue-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.continue-title { overflow: hidden; font-size: 14px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.continue-meta { overflow: hidden; color: var(--text-3); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.continue-bar { height: 3px; margin-top: 4px; border-radius: 99px; background: var(--fill); overflow: hidden; }
+.continue-bar i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+
 /* ---------- 条目行（榜单 / 搜索 / 详情侧栏） ---------- */
 .score { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .score::before { content: '★'; margin-right: 2px; color: var(--warning); font-weight: 400; }
