@@ -231,8 +231,10 @@
     video.addEventListener('emptied', function () { clearScreen(); });
 
     // 原生控件的全屏只放大 <video>，弹幕层会被挡住；支持元素全屏的浏览器改为让外层容器全屏。
+    // 全屏的是「播放器 + AI 陪看」整行，全屏时也能打开 AI 陪看。
     // iPhone 不支持元素全屏，保留系统全屏（不显示弹幕）。
-    if (wrap.requestFullscreen) {
+    var fsTarget = document.getElementById('watch-row') || wrap;
+    if (fsTarget.requestFullscreen) {
       video.setAttribute('controlslist', 'nofullscreen');
       var fsButton = document.createElement('button');
       fsButton.type = 'button';
@@ -240,10 +242,10 @@
       fsButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
       var toggleFull = function () {
         if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
-        else wrap.requestFullscreen().catch(function () {});
+        else fsTarget.requestFullscreen().catch(function () {});
       };
       var syncFull = function () {
-        var full = document.fullscreenElement === wrap;
+        var full = document.fullscreenElement === fsTarget;
         fsButton.title = full ? '退出全屏' : '全屏（带弹幕）';
         fsButton.setAttribute('aria-label', fsButton.title);
         // 尺寸变了，屏幕上的弹幕位置不再准确

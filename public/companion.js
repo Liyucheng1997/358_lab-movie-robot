@@ -230,7 +230,7 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function () { node.classList.remove('is-on'); }, Math.min(20000, 6000 + text.length * 120));
     }
-    function panelVisible() { return isOpen() && !document.fullscreenElement; }
+    function panelVisible() { return isOpen(); }
 
     // ---------- 调用 Claude ----------
     function setBusy(controller) {
@@ -516,27 +516,45 @@
       actions.append(clear, el('span', 'cmp-hint', 'AI 根据进度、影片资料、此刻的弹幕和你附上的画面来聊；费用计入你自己的 API Key。'));
       settingsBox.appendChild(actions);
     }
-    gear.addEventListener('click', function () {
-      var open = settingsBox.hidden;
-      settingsBox.hidden = !open;
-      gear.setAttribute('aria-expanded', String(open));
-      if (open) buildSettings();
-    });
+    // 设置面板浮在对话上方，不挤占聊天区
+    function toggleSettings(show) {
+      settingsBox.hidden = !show;
+      gear.setAttribute('aria-expanded', String(show));
+      if (show) {
+        settingsBox.style.top = $('.cmp-head').offsetHeight + 'px';
+        buildSettings();
+      }
+    }
+    gear.addEventListener('click', function () { toggleSettings(settingsBox.hidden); });
+    log.addEventListener('click', function () { if (!settingsBox.hidden) toggleSettings(false); });
 
     // ---------- 展开 / 收起：宽屏在播放器右侧，窄屏是底部抽屉 ----------
     var wide = window.matchMedia('(min-width: 992px)');
     var open = wide.matches && readJSON(OPEN_KEY, true) !== false;
     function isOpen() { return open; }
+    // 播放器右上角的 AI 按钮：普通和全屏状态下都能打开 / 收起 AI 陪看
+    var playerBtn = el('button', 'cmp-player-btn');
+    playerBtn.type = 'button';
+    playerBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span>AI</span>';
+    playerBtn.addEventListener('click', function () { setOpen(!open); });
+    video.parentElement.appendChild(playerBtn);
+
     function apply() {
       row.classList.toggle('cmp-off', !open);
       box.classList.toggle('is-open', open);
       document.body.classList.toggle('cmp-sheet-open', open && !wide.matches);
+      // 宽屏打开 AI 陪看时把播放页放宽，播放器尽量保持原来的大小
+      document.body.classList.toggle('cmp-wide', open && wide.matches);
       if (fab) fab.hidden = open;
       if (open && fab) fab.classList.remove('has-new');
+      playerBtn.classList.toggle('is-on', open);
+      playerBtn.title = open ? '收起 AI 陪看' : '打开 AI 陪看';
+      playerBtn.setAttribute('aria-label', playerBtn.title);
+      playerBtn.setAttribute('aria-pressed', String(open));
     }
     function setOpen(v) {
       open = v;
-      if (wide.matches) writeJSON(OPEN_KEY, v);
+      if (wide.matches && !document.fullscreenElement) writeJSON(OPEN_KEY, v);
       apply();
       if (v) { scrollDown(); if (wide.matches) input.focus({ preventScroll: true }); }
     }

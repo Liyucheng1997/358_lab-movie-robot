@@ -110,7 +110,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=11">
+  <link rel="stylesheet" href="/resources/common.css?v=12">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -573,7 +573,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=7"></script><script src="/resources/danmaku.js?v=4"></script><script src="/resources/companion.js?v=2"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=7"></script><script src="/resources/danmaku.js?v=5"></script><script src="/resources/companion.js?v=3"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 

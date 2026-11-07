@@ -51,5 +51,5 @@ test('播放页带续播提示和 AI 陪看面板，影片资料传给陪看脚�
   assert.match(html, /companion\.js\?v=\d+"><\/script>[\s\S]*initPlay\(/);
   assert.ok(html.includes('"originalTitle":"The Shawshank Redemption"'));
   const page = staticHTML(html, '2026-11-07');
-  assert.ok(page.includes(`src="${base}resources/companion.js?v=2"`));
+  assert.ok(page.includes(`src="${base}resources/companion.js?v=3"`));
 });
