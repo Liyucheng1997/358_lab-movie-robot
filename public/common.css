@@ -755,6 +755,89 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
   .cmp-input { font-size: 16px; }
 }
 
+/* ---------- 电视直播 ---------- */
+.tv-wrap { background: #000; }
+.tv-empty {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  color: rgba(255, 255, 255, .55); pointer-events: none;
+}
+.tv-empty p { margin: 0; font-size: 15px; }
+.tv-empty[hidden], .tv-now[hidden] { display: none; }
+.tv-now { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.tv-now-body { flex: 1; min-width: 0; }
+.tv-now-name { margin: 0; overflow: hidden; font-size: 22px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; text-overflow: ellipsis; }
+.tv-now-meta { margin: 2px 0 0; color: var(--text-3); font-size: 13px; }
+.tv-fav-btn { flex: none; gap: 6px; }
+.tv-fav-btn[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary); }
+.tv-fav-btn[aria-pressed='true'] .ico { fill: currentColor; }
+.tv-lines { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tv-line {
+  height: 28px; padding: 0 12px; border: 0; border-radius: 99px; background: var(--fill); color: var(--text-2);
+  font-size: 12px; font-weight: 500; transition: background .15s, color .15s;
+}
+.tv-line:hover { background: var(--fill-hover); color: var(--text); }
+.tv-line[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary); }
+.tv-line.is-failed { color: var(--text-4); text-decoration: line-through; }
+.tv-status { min-height: 20px; margin: 10px 2px 0; font-size: 13px; }
+.tv-head { margin-top: 28px; align-items: flex-end; }
+.tv-head .page-title { margin-bottom: 4px; }
+.tv-meta { margin: 0; font-size: 13px; }
+.tv-downloads { display: flex; gap: 8px; flex: none; }
+.tv-downloads .pill-btn { gap: 5px; }
+.tv-countries { display: flex; gap: 8px; margin: 0 0 14px; padding-bottom: 4px; overflow-x: auto; scrollbar-width: thin; }
+.tv-country {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: 99px;
+  background: var(--panel); box-shadow: var(--shadow-card); color: var(--text-2); font-size: 13px; font-weight: 500; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.tv-country small { color: var(--text-4); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tv-country:hover { color: var(--text); }
+.tv-country[aria-selected='true'] { background: var(--primary); color: #fff; }
+.tv-country[aria-selected='true'] small { color: rgba(255, 255, 255, .75); }
+.tv-filter { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.tv-search { flex: none; width: 240px; margin: 0; font-weight: 400; cursor: text; }
+.tv-cats { flex: 1; min-width: 0; margin: 2px 0 0; }
+.tv-cats a { height: 30px; padding: 0 12px; font-size: 13px; }
+.tv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.tv-loading { grid-column: 1 / -1; margin: 24px 0; text-align: center; }
+.tv-ch {
+  display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 12px; border: 0; border-radius: 14px;
+  background: var(--panel); box-shadow: var(--shadow-card); color: var(--text); text-align: left;
+  transition: transform .2s var(--ease-out), box-shadow .2s;
+}
+.tv-ch:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.tv-ch.is-playing { box-shadow: inset 0 0 0 2px var(--primary), var(--shadow-card); }
+.tv-logo {
+  position: relative; display: grid; place-items: center; flex: none; width: 56px; height: 40px; overflow: hidden;
+  border-radius: 8px; background: var(--panel-2);
+}
+.tv-logo img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); object-fit: contain; opacity: 0; transition: opacity .2s; }
+.tv-logo.has-img img { opacity: 1; }
+.tv-logo.has-img .tv-initial { visibility: hidden; }
+.tv-initial { color: var(--text-3); font-size: 14px; font-weight: 600; }
+.tv-logo-lg { width: 72px; height: 52px; border-radius: 10px; }
+.tv-ch-body { display: flex; flex-direction: column; min-width: 0; }
+.tv-ch-name { overflow: hidden; font-size: 14px; font-weight: 500; line-height: 1.35; white-space: nowrap; text-overflow: ellipsis; }
+.tv-ch-info { overflow: hidden; color: var(--text-3); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.tv-sentinel { height: 1px; }
+.tv-note { margin: 28px 2px 0; font-size: 12px; line-height: 1.7; }
+@media (max-width: 767px) {
+  .tv-now { margin-top: 12px; }
+  .tv-now-name { font-size: 18px; }
+  .tv-logo-lg { width: 56px; height: 40px; }
+  .tv-head { flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .tv-countries { margin: 0 -16px 12px; padding: 0 16px 4px; scrollbar-width: none; }
+  .tv-countries::-webkit-scrollbar { display: none; }
+  .tv-filter { flex-direction: column; gap: 10px; }
+  .tv-search { width: 100%; }
+  .tv-cats { flex-wrap: nowrap; overflow-x: auto; width: calc(100% + 32px); margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+  .tv-cats::-webkit-scrollbar { display: none; }
+  .tv-cats li { flex: none; }
+  .tv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tv-ch { gap: 8px; padding: 8px; }
+  .tv-logo { width: 44px; height: 32px; }
+}
+
 /* ---------- 底部标签栏（窄屏） ---------- */
 .tabbar { display: none; }
 

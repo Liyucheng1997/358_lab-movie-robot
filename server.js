@@ -7,9 +7,13 @@ const views = require('./src/views');
 const sources = require('./src/sources');
 const recommend = require('./src/recommend');
 const danmaku = require('./src/danmaku');
+const tv = require('./src/tv');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+// 电视直播源：服务端每 6 小时抓取并检测一次，结果写在 DATA_DIR/tv（TV_UPDATE=0 关闭定时更新）
+const TV_DIR = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'tv');
+const TV_FILES = { json: 'application/json; charset=utf-8', m3u: 'audio/x-mpegurl; charset=utf-8', txt: 'text/plain; charset=utf-8' };
 const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -64,6 +68,26 @@ function serveStatic(res, rel) {
     });
     res.end(buf);
   });
+}
+
+// 电视直播的数据和播放列表；有预先压缩的 .gz 就直接发
+function serveTV(req, res, rel) {
+  const ext = path.extname(rel).slice(1);
+  const file = path.join(TV_DIR, rel);
+  const gzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+  const headers = {
+    'Content-Type': TV_FILES[ext], 'Cache-Control': 'public, max-age=600', 'Access-Control-Allow-Origin': '*', Vary: 'Accept-Encoding',
+  };
+  const sendFile = (f, extra) => fs.readFile(f, (err, buf) => {
+    if (err) {
+      if (extra) return sendFile(file, null); // 没有压缩版就发原文件
+      if (rel === 'data/index.json') return json(res, 404, { pending: true, message: '直播源正在首次更新，大约 20 分钟后刷新再看。' });
+      return json(res, 404, { error: '没有这个文件' });
+    }
+    res.writeHead(200, { ...headers, ...(extra || {}) });
+    res.end(buf);
+  });
+  sendFile(gzip ? file + '.gz' : file, gzip ? { 'Content-Encoding': 'gzip' } : null);
 }
 
 async function home(res) {
@@ -169,6 +193,9 @@ async function route(req, res) {
   if (pathname === '/billboard.html') return billboard(res);
   if (pathname === '/history.html') return send(res, 200, views.historyPage());
   if (pathname === '/foryou.html') return send(res, 200, views.forYouPage());
+  if (pathname === '/tv.html') return send(res, 200, views.tvPage());
+  const tvMatch = pathname.match(/^\/tv\/(data\/index\.json|data\/c\/[A-Z]{2}\.json|playlist\.(?:m3u|txt))$/);
+  if (tvMatch) return serveTV(req, res, tvMatch[1]);
 
   // 推荐候选池和相关影片：排序在浏览器里按本地行为画像完成，服务端不保存任何用户数据
   if (pathname === '/api/rec/pool') {
@@ -269,3 +296,5 @@ http
     });
   })
   .listen(PORT, process.env.HOST, () => console.log(`服务已启动: http://${process.env.HOST || 'localhost'}:${PORT}`));
+
+if (process.env.TV_UPDATE !== '0') tv.schedule({ dir: TV_DIR });

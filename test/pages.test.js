@@ -65,3 +65,12 @@ test('播放页带续播提示和 AI 陪看面板，影片资料传给陪看脚�
   const page = staticHTML(html, '2026-11-07');
   assert.ok(page.includes(`src="${base}resources/companion.js?v=3"`));
 });
+
+test('电视直播页：导航有入口，静态版播放列表和数据走仓库子目录', () => {
+  const page = views.tvPage();
+  assert.ok(page.includes('href="/tv.html"'));
+  assert.ok(page.includes('id="tv-video"') && page.includes('id="tv-grid"'));
+  const html = staticHTML(page, '2026-11-07');
+  assert.ok(html.includes(`href="${base}tv/playlist.m3u"`));
+  assert.ok(html.includes(`src="${base}resources/tv.js?v=1"`));
+});

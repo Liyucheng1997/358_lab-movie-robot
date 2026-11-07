@@ -1,6 +1,6 @@
 {
   "name": "358_lab-movie-robot",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "仿 ikanbot 布局的影视聚合站（数据来自豆瓣公开接口）",
   "main": "server.js",
   "private": true,
@@ -11,7 +11,8 @@
     "snapshot": "node scripts/snapshot.js",
     "snapshot:images": "node scripts/snapshot-images.js",
     "build:pages": "node scripts/build-pages.js",
-    "preview:pages": "node scripts/preview-pages.js"
+    "preview:pages": "node scripts/preview-pages.js",
+    "tv:update": "node scripts/tv-update.js"
   },
   "engines": {
     "node": ">=18"

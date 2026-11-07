@@ -31,6 +31,9 @@ const ICONS = {
   heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.3a4.9 4.9 0 0 1 7.5 6.3z"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  broadcast: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
   camera: '<path d="M14.5 4h-5L7.5 6.5H4a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
@@ -55,6 +58,7 @@ const NAV = [
   ['foryou', '/foryou.html', 'compass', '推荐'],
   ['movie', hotUrl('movie', '热门'), 'film', '电影'],
   ['tv', hotUrl('tv', '热门'), 'tv', '剧集'],
+  ['live', '/tv.html', 'broadcast', '电视'],
   ['billboard', '/billboard.html', 'chart', '榜单'],
   ['history', '/history.html', 'clock', '播放历史', '看过'],
 ];
@@ -121,7 +125,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=15">
+  <link rel="stylesheet" href="/resources/common.css?v=16">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -612,6 +616,49 @@ function forYouPage() {
   return layout({ title: '为你推荐', body, active: 'foryou', description: '根据观看习惯个性化推荐的电影和剧集', scripts: REC_SCRIPTS });
 }
 
+// 电视直播：频道数据由服务端每 6 小时抓取检测一次（src/tv.js），页面逻辑在 public/tv.js
+function tvPage() {
+  const body = `
+<div class="container main tv-main">
+  <div class="tv-player">
+    <div class="embed-responsive embed-responsive-16by9 player-wrap tv-wrap">
+      <video id="tv-video" class="embed-responsive-item" controls playsinline preload="none"></video>
+      <div class="tv-empty" id="tv-empty">${icon('broadcast', 40)}<p>选一个频道开始看</p></div>
+    </div>
+    <div class="tv-now" id="tv-now" hidden>
+      <div class="tv-now-logo"></div>
+      <div class="tv-now-body"><h1 class="tv-now-name"></h1><p class="tv-now-meta"></p></div>
+      <button type="button" class="pill-btn pill-btn-sm tv-fav-btn" aria-pressed="false">${icon('star', 15)}<span>收藏</span></button>
+    </div>
+    <div class="tv-lines" id="tv-lines"></div>
+    <p class="tv-status text-muted" id="tv-status" role="status" aria-live="polite"></p>
+  </div>
+  <div class="page-head page-head-row tv-head">
+    <div>
+      <div class="eyebrow">LIVE TV</div>
+      <h2 class="page-title">电视直播</h2>
+      <p class="tv-meta text-muted" id="tv-meta">正在加载频道…</p>
+    </div>
+    <div class="tv-downloads">
+      <a class="pill-btn pill-btn-sm" href="/tv/playlist.m3u" download="playlist.m3u" title="导入 VLC、PotPlayer、TiviMate、Kodi 等播放器">${icon('download', 14)}M3U</a>
+      <a class="pill-btn pill-btn-sm" href="/tv/playlist.txt" download="playlist.txt" title="国内 IPTV 工具常用的 TXT 格式">${icon('download', 14)}TXT</a>
+    </div>
+  </div>
+  <div class="tv-countries" id="tv-countries" role="tablist" aria-label="地区"></div>
+  <div class="tv-filter">
+    <label class="search-pill tv-search">${icon('search', 16)}<input id="tv-q" type="search" class="search-input" placeholder="在当前地区搜频道" aria-label="搜索频道" autocomplete="off"></label>
+    <ul class="chips tv-cats" id="tv-cats"></ul>
+  </div>
+  <div class="tv-grid" id="tv-grid"></div>
+  <div class="tv-sentinel" id="tv-sentinel" aria-hidden="true"></div>
+  <p class="tv-note text-muted">频道和直播地址来自 <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a> 公开整理的直播源，本站每 6 小时自动检测一次，只列出浏览器能直接播放的频道；完整列表（含只能在播放器里看的地址）见上方 M3U / TXT。有些频道有地区限制或不是 24 小时播出，播不了时会自动换线路。</p>
+</div>`;
+  return layout({
+    title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=1"></script>',
+  });
+}
+
 function historyPage() {
   const body = `
 <div class="container main">
@@ -637,4 +684,4 @@ function errorPage(status, message) {
   return layout({ title: status === 404 ? '页面不存在' : '出错了', body });
 }
 
-module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, errorPage, hotUrl };
+module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, tvPage, errorPage, hotUrl };

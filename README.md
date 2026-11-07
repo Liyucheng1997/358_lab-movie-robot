@@ -57,6 +57,8 @@ npm run dev          # 修改代码后自动重启
 | `/api/rec/pool` | 推荐候选池：全部分类第一页 + 全部榜单，带类型/地区/主创/年代特征，缓存 30 分钟 |
 | `/api/rec/related/{豆瓣ID}` | 豆瓣「看过这部的人也喜欢」相关影片，缓存 6 小时 |
 | `/api/danmaku/{豆瓣ID}?ep=&seg=` | 弹幕：第 ep 集（从 1 开始）的第 seg 个 5 分钟分段，合并哔哩哔哩、爱奇艺、腾讯视频和本站弹幕；POST 发送本站弹幕 |
+| `/tv.html` | 电视直播：按地区 / 类型浏览各国频道，搜索、收藏、最近观看，`#地区/频道ID` 直达 |
+| `/tv/playlist.m3u`、`/tv/playlist.txt` | 检测可用的全部直播地址，可导入播放器 |
 | `/history.html` | 播放历史：进度、线路、观看时间（存在浏览器 localStorage） |
 
 ## 结构
@@ -129,6 +131,19 @@ npm run dev          # 修改代码后自动重启
 - **静态版**：没有服务端，只显示和保存本机发送的弹幕（localStorage `danmaku_local_v1`）。
 
 服务端在 `src/danmaku.js`，界面在 `public/danmaku.js`，`public/player.js` 选集时发出 `player:select` 事件告诉弹幕当前是第几集，测试在 `test/danmaku.test.js`。
+
+## 电视直播
+
+参照 iptv 开源项目（定时抓取公开直播源 → 逐条检测 → 导出 TXT / M3U）的做法实现，数据来自 [iptv-org](https://github.com/iptv-org/iptv) 公开整理的频道库（[API](https://github.com/iptv-org/api)）。
+
+1. **抓取**：`channels`、`streams`、`logos`、`blocklist`、`countries` 五个公开 JSON；`TV_EXTRA_M3U` 环境变量可以追加其他公开 M3U 源（逗号或空格分隔），`tvg-id` 对上 iptv-org 的并入同一频道。
+2. **过滤**：遵守 iptv-org 屏蔽名单（版权投诉、成人内容），排除 `is_nsfw`、已停播、`xxx` 类型，以及需要特定 Referer / User-Agent 的地址；同一地址只测一次。没有频道编号的地址按名字里的文字猜地区（汉字 → 中国、假名 → 日本、谚文 → 韩国）。
+3. **检测**：和网页播放器一样请求播放列表 →（多码率时）子播放列表 → 第一个视频分片的前 4KB，单条 10 秒超时，64 路并发，一轮约 1.7 万个地址、二三十分钟。同时记录响应时间、最高分辨率，以及能否在网页直接播放（全程 HTTPS 且每一步都返回允许跨域的 `Access-Control-Allow-Origin`）。
+4. **导出**（`src/tv.js`）：`data/index.json`（地区、类型、统计）和每个地区一个 `data/c/{地区}.json`，只含网页能播的地址、按速度排序；`playlist.m3u`、`playlist.txt` 含全部检测可用的地址（http 地址在 https 网页里会被浏览器拦截，但播放器能播）。每个文件另存一份 `.gz`，服务端按 `Accept-Encoding` 直接发压缩版。索引最后写，更新途中旧数据一直可用。
+5. **更新**：实时版服务端启动 15 秒后检查，数据超过 6 小时就在后台更新，之后每半小时检查一次；数据写在 `DATA_DIR/tv`（默认 `data/tv`），`TV_UPDATE=0` 关闭。`TV_CHECK_ORIGIN` 是检测跨域时用的来源（默认 `https://movie.liyucheng.me`）。手动更新：`npm run tv:update`（`-- --limit 1500` 均匀抽样试跑，`--out 目录` 指定输出）。
+6. **静态版**：`Deploy GitHub Pages` 增加每 6 小时一次的定时任务，定时 / 手动运行时重新检测，推送代码时沿用 Actions 缓存里的上一次结果，构建时复制到 `dist/tv/`。
+
+页面（`public/tv.js`）：地区标签（中文地区在前）、类型筛选、当前地区内搜索、频道格子分批渲染；hls.js 播放，一条线路 15 秒内没开始播或出错就自动换下一条，也可以手动选线路；收藏和最近观看存在本机 localStorage。检测在服务器上进行，地区限制和网络环境可能和访客不同，所以播放时仍会自动换线路。
 
 ## 与原站的区别
 

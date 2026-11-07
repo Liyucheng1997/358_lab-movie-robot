@@ -53,6 +53,16 @@ async function main() {
   await write('billboard.html', render(views.billboardPage(boards)));
   await write('history.html', render(views.historyPage()));
   await write('foryou.html', render(views.forYouPage()));
+  await write('tv.html', render(views.tvPage()));
+  // 电视直播数据：CI 里由 npm run tv:update 生成到 snapshots/tv（每 6 小时更新一次）；没有时电视页显示暂无数据
+  const tvDir = process.env.TV_DATA_DIR || path.join(root, 'snapshots/tv');
+  let tvNote = '没有电视直播数据';
+  try {
+    await fs.access(path.join(tvDir, 'data/index.json'));
+    await fs.cp(tvDir, path.join(out, 'tv'), { recursive: true, filter: (f) => !/\.(gz|tmp)$/.test(f) });
+    const tvIndex = JSON.parse(await fs.readFile(path.join(tvDir, 'data/index.json'), 'utf8'));
+    tvNote = `电视频道 ${tvIndex.stats.web} 个（${tvIndex.updatedAt.slice(0, 16)} 检测）`;
+  } catch (e) { /* 没有数据 */ }
   await write('search/index.html', render(views.searchPage('')));
   await write('404.html', render(views.errorPage(404, '此页面尚未收录到静态快照，请返回首页搜索。')));
   for (const [id, d] of Object.entries(data.details)) {
@@ -66,7 +76,7 @@ async function main() {
   const recPool = recommend.buildPool(data, u => (images[u] ? `${base}resources/covers/${images[u]}` : u), id => !!data.details[id]);
   await write('rec/pool.json', JSON.stringify({ items: recPool }));
   await write('.nojekyll', '');
-  console.log(`Pages 构建完成: ${catalog.length} 部影片，推荐候选 ${recPool.length} 部，路径 ${base}`);
+  console.log(`Pages 构建完成: ${catalog.length} 部影片，推荐候选 ${recPool.length} 部，${tvNote}，路径 ${base}`);
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exitCode = 1; });

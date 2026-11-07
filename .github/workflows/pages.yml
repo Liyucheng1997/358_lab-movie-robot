@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # 电视直播源每 6 小时重新抓取、检测一次
+  schedule:
+    - cron: '17 */6 * * *'
 permissions:
   contents: read
 concurrency:
@@ -17,6 +20,28 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+      # 推送代码时沿用上一次的检测结果；定时任务、手动运行或没有缓存时重新检测
+      - name: Restore TV channels
+        id: tvcache
+        uses: actions/cache/restore@v4
+        with:
+          path: snapshots/tv
+          key: tv-${{ github.run_id }}
+          restore-keys: tv-
+      - name: Update TV channels
+        id: tvupdate
+        if: github.event_name != 'push' || steps.tvcache.outputs.cache-matched-key == ''
+        continue-on-error: true
+        timeout-minutes: 60
+        run: npm run tv:update -- --out snapshots/tv --concurrency 64
+        env:
+          TV_CHECK_ORIGIN: https://liyucheng1997.github.io
+      - name: Save TV channels
+        if: steps.tvupdate.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: snapshots/tv
+          key: tv-${{ github.run_id }}
       - run: npm run build:pages
         env:
           PAGES_BASE_PATH: ${{ github.event.repository.name }}
