@@ -72,5 +72,35 @@ test('电视直播页：导航有入口，静态版播放列表和数据走仓�
   assert.ok(page.includes('id="tv-video"') && page.includes('id="tv-grid"'));
   const html = staticHTML(page, '2026-11-07');
   assert.ok(html.includes(`href="${base}tv/playlist.m3u"`));
-  assert.ok(html.includes(`src="${base}resources/tv.js?v=1"`));
+  assert.ok(html.includes(`src="${base}resources/tv.js?v=2"`));
+});
+
+test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕脚本按模块加载', () => {
+  const page = views.tvPage();
+  assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-btn"'));
+  assert.ok(page.includes('id="tv-subs"') && page.includes('id="tv-subs-bar"') && page.includes('id="tv-sub-lang"'));
+  assert.ok(page.includes('<dialog class="ai-dialog"'));
+  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=1"></script>'));
+});
+
+test('直播字幕：按地区选识别语言、中文不用翻译、长字幕只留结尾', async () => {
+  const subs = await import('../public/tv-subs.js');
+  assert.equal(subs.langForCountry('IT'), 'it-IT');
+  assert.equal(subs.langForCountry('hk'), 'yue-Hant-HK');
+  assert.equal(subs.langForCountry('MX'), 'es-MX');
+  assert.equal(subs.langForCountry('ZZ'), 'en-US');
+  assert.equal(subs.langForCountry(''), 'en-US');
+  assert.ok(subs.isChinese('zh-CN') && subs.isChinese('yue-Hant-HK') && !subs.isChinese('en-US'));
+  const codes = subs.LANGS.map((l) => l[0]);
+  assert.equal(new Set(codes).size, codes.length);
+  assert.equal(subs.tail('short line'), 'short line');
+  const long = 'one two three four five six seven eight nine ten';
+  const cut = subs.tail(long, 20);
+  assert.ok(cut.startsWith('…') && long.endsWith(cut.slice(1)) && cut.length <= 21);
+  assert.equal(subs.tail('一二三四五六七八九十'.repeat(5)).length, 41);
+  // 中文译文里夹着空格也不能截成只剩省略号
+  const zh = subs.tail('延续民主党候选人的优势 ' + '似乎有某种被创造出来的局面'.repeat(4));
+  assert.ok(zh.length > 30 && zh.startsWith('…'));
+  // 一个很长的词也不能把整句截没
+  assert.ok(subs.tail('x '.repeat(10) + 'y'.repeat(200), 50).length > 40);
 });

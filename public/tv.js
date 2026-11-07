@@ -248,6 +248,9 @@
 
   function play(ch, autoplay) {
     current = ch;
+    // 通知字幕模块（public/tv-subs.js）换了频道
+    window.tvChannel = ch;
+    document.dispatchEvent(new CustomEvent('tv:channel', { detail: ch }));
     lineIdx = 0;
     pushRecent(ch);
     grid.querySelectorAll('.tv-ch').forEach(function (b) { b.classList.toggle('is-playing', b.dataset.id === ch.id); });
@@ -344,6 +347,28 @@
     clearTimeout(startTimer);
     status('');
   });
+
+  // 原生控件的全屏只放大 <video>，字幕层会被挡住；支持元素全屏的浏览器改为让外层容器全屏
+  var wrap = video.closest('.tv-wrap');
+  if (wrap.requestFullscreen) {
+    video.setAttribute('controlslist', 'nofullscreen');
+    var fsButton = el('button', 'dm-fullscreen');
+    fsButton.type = 'button';
+    fsButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    var toggleFull = function () {
+      if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+      else wrap.requestFullscreen().catch(function () {});
+    };
+    var syncFull = function () {
+      fsButton.title = document.fullscreenElement === wrap ? '退出全屏' : '全屏';
+      fsButton.setAttribute('aria-label', fsButton.title);
+    };
+    fsButton.addEventListener('click', toggleFull);
+    video.addEventListener('dblclick', toggleFull);
+    document.addEventListener('fullscreenchange', syncFull);
+    wrap.appendChild(fsButton);
+    syncFull();
+  }
 
   // ---------- 启动 ----------
   function ago(iso) {

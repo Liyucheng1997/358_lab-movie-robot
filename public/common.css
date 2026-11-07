@@ -771,6 +771,40 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
 .tv-fav-btn[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary); }
 .tv-fav-btn[aria-pressed='true'] .ico { fill: currentColor; }
 .tv-lines { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+/* 直播字幕（public/tv-subs.js）：画面底部两行，中文在上、原文在下 */
+.tv-subs-btn { flex: none; gap: 6px; }
+.tv-subs-btn[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary); }
+.tv-subs {
+  position: absolute; right: 6%; bottom: 58px; left: 6%; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  pointer-events: none; text-align: center;
+}
+.tv-subs[hidden] { display: none; }
+.tv-subs p {
+  max-width: 100%; margin: 0; padding: 2px 10px; border-radius: 6px; background: rgba(0, 0, 0, .62); color: #fff;
+  line-height: 1.45; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.tv-subs p[hidden] { display: none; }
+.tv-sub-zh { font-size: clamp(15px, 2.3vw, 24px); font-weight: 500; }
+.tv-sub-orig { color: rgba(255, 255, 255, .86) !important; font-size: clamp(12px, 1.7vw, 18px); }
+.tv-subs.is-single .tv-sub-orig { color: #fff !important; font-size: clamp(15px, 2.3vw, 24px); }
+.player-wrap:fullscreen .tv-subs { bottom: 72px; }
+.player-wrap:fullscreen .tv-sub-zh, .player-wrap:fullscreen .tv-subs.is-single .tv-sub-orig { font-size: clamp(22px, 2.6vw, 40px); }
+.player-wrap:fullscreen .tv-sub-orig { font-size: clamp(16px, 1.9vw, 30px); }
+.tv-subs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; }
+.tv-subs-bar[hidden] { display: none; }
+.tv-subs-modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--fill); }
+.tv-subs-modes button {
+  height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font-size: 13px;
+}
+.tv-subs-modes button[aria-pressed='true'] { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.tv-subs-lang { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--text-3); font-size: 13px; font-weight: 400; }
+.tv-subs-lang select {
+  height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--fill); color: var(--text); font-size: 13px;
+}
+.tv-subs-key { gap: 5px; }
+.tv-subs-key[hidden] { display: none; }
+.tv-subs-status { flex-basis: 100%; min-height: 0; margin: 0 2px; font-size: 12px; line-height: 1.6; }
+.tv-subs-status:empty { display: none; }
 .tv-line {
   height: 28px; padding: 0 12px; border: 0; border-radius: 99px; background: var(--fill); color: var(--text-2);
   font-size: 12px; font-weight: 500; transition: background .15s, color .15s;

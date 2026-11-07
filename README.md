@@ -2,27 +2,7 @@
 
 零依赖的 Node.js 影视聚合站，页面结构、URL 规则与 ikanbot 一致，数据实时取自豆瓣公开接口。
 
-[在线访问 GitHub Pages](https://Liyucheng1997.github.io/358_lab-movie-robot/) · [v1.0.0 版本](https://github.com/Liyucheng1997/358_lab-movie-robot/releases/tag/v1.0.0)
-
-## GitHub Pages 静态版
-
-Pages 只托管静态文件，因此线上版本读取构建快照；本地 Node.js 版本仍实时查询接口。静态版包含每个电影/剧集分类的前 12 部影片、口碑榜、豆瓣电影 Top250 前 50 部、影片详情、M3U8 线路与选集、收录影片搜索和本地播放历史。页面顶部显示快照日期。数据和播放链接可能随上游变更而失效，「重新检测」按钮只重读快照并重新检测线路，不会实时向上游查询线路列表。
-
-更新数据并部署：
-
-```bash
-npm run snapshot       # 本地联网抓取影片资料和线路，写入 snapshots/site.json
-npm run snapshot:images # 下载豆瓣海报、预告封面和平台图标，避免防盗链
-npm run build:pages    # 从快照生成 dist/，不依赖外部接口
-npm run preview:pages  # http://localhost:4173/358_lab-movie-robot/ 验证静态版
-git add snapshots/
-git commit -m "Refresh movie snapshot"
-git push               # main 分支推送触发 Pages 自动部署
-```
-
-使用已提交快照进行 CI 构建，避免 GitHub runner 无法访问数据源导致站点空白。也可以在 Actions 中手动运行 `Deploy GitHub Pages`。`PAGES_BASE_PATH` 指定项目路径，默认 `358_lab-movie-robot`；更改仓库名时 workflow 自动使用新名称。
-
-静态版的豆瓣图片在构建前使用豆瓣 Referer 下载至 `snapshots/images/`，随 Pages 同站部署；首页、详情、搜索及播放历史使用这些图片快照，避免跨站防盗链。视频直接向源站请求，能否播放仍取决于源站可用性、CORS 和浏览器编码支持。动态版使用服务端豆瓣图片/预告代理。
+[在线访问](https://movie.liyucheng.me) · [版本发布](https://github.com/Liyucheng1997/358_lab-movie-robot/releases)
 
 ## 服务器实时版
 
@@ -31,6 +11,19 @@ git push               # main 分支推送触发 Pages 自动部署
 - 服务器目录 `/opt/apps/movie`，systemd 服务 `app-movie`，监听 `127.0.0.1:4358`，由 nginx 反向代理并提供 HTTPS。
 - 推送 `main` 且改动 `server.js`、`src/`、`public/` 或 `package.json` 时，`Deploy Server` workflow 先运行测试，再通过受限 SSH 钥匙调用服务器上的 `/usr/local/bin/deploy-movie`（拉取代码、重启服务、健康检查）。也可在 Actions 中手动运行。
 - 所需 secrets：`MOVIE_DEPLOY_SSH_KEY`、`MOVIE_DEPLOY_KNOWN_HOSTS`。
+
+## 静态快照版（已停止部署）
+
+项目只部署服务器实时版。GitHub Pages 静态版不再部署，`Deploy GitHub Pages` workflow 已删除；构建脚本还保留，需要时可以在本地生成：
+
+```bash
+npm run snapshot        # 本地联网抓取影片资料和线路，写入 snapshots/site.json
+npm run snapshot:images # 下载豆瓣海报、预告封面和平台图标，避免防盗链
+npm run build:pages     # 从快照生成 dist/，不依赖外部接口
+npm run preview:pages   # http://localhost:4173/358_lab-movie-robot/ 验证静态版
+```
+
+静态版读取构建快照：每个电影/剧集分类的前 12 部影片、口碑榜、豆瓣电影 Top250 前 50 部、影片详情、M3U8 线路与选集；豆瓣图片在构建前下载到 `snapshots/images/`，避免跨站防盗链。电视直播数据从 `snapshots/tv/`（或 `TV_DATA_DIR`）复制，用 `npm run tv:update -- --out snapshots/tv` 生成。
 
 ## 运行
 
@@ -141,9 +134,18 @@ npm run dev          # 修改代码后自动重启
 3. **检测**：和网页播放器一样请求播放列表 →（多码率时）子播放列表 → 第一个视频分片的前 4KB，单条 10 秒超时，64 路并发，一轮约 1.7 万个地址、二三十分钟。同时记录响应时间、最高分辨率，以及能否在网页直接播放（全程 HTTPS 且每一步都返回允许跨域的 `Access-Control-Allow-Origin`）。
 4. **导出**（`src/tv.js`）：`data/index.json`（地区、类型、统计）和每个地区一个 `data/c/{地区}.json`，只含网页能播的地址、按速度排序；`playlist.m3u`、`playlist.txt` 含全部检测可用的地址（http 地址在 https 网页里会被浏览器拦截，但播放器能播）。每个文件另存一份 `.gz`，服务端按 `Accept-Encoding` 直接发压缩版。索引最后写，更新途中旧数据一直可用。
 5. **更新**：实时版服务端启动 15 秒后检查，数据超过 6 小时就在后台更新，之后每半小时检查一次；数据写在 `DATA_DIR/tv`（默认 `data/tv`），`TV_UPDATE=0` 关闭。`TV_CHECK_ORIGIN` 是检测跨域时用的来源（默认 `https://movie.liyucheng.me`）。手动更新：`npm run tv:update`（`-- --limit 1500` 均匀抽样试跑，`--out 目录` 指定输出）。
-6. **静态版**：`Deploy GitHub Pages` 增加每 6 小时一次的定时任务，定时 / 手动运行时重新检测，推送代码时沿用 Actions 缓存里的上一次结果，构建时复制到 `dist/tv/`。
+6. **静态版**：不再部署；本地构建时从 `snapshots/tv/` 复制到 `dist/tv/`。
 
 页面（`public/tv.js`）：地区标签（中文地区在前）、类型筛选、当前地区内搜索、频道格子分批渲染；hls.js 播放，一条线路 15 秒内没开始播或出错就自动换下一条，也可以手动选线路；收藏和最近观看存在本机 localStorage。检测在服务器上进行，地区限制和网络环境可能和访客不同，所以播放时仍会自动换线路。
+
+**字幕**（`public/tv-subs.js`）：直播流大多不带字幕，所以由浏览器现场识别。
+
+1. **取声音**：用 Web Audio 的 `createMediaElementSource` 把 `<video>` 的声音接出一路音轨（同时接回扬声器）。hls.js 播放的是同源 blob，不受跨域限制。
+2. **识别**：`new SpeechRecognition()` 设为连续识别、返回中间结果，调用 `start(音轨)` 识别视频的声音而不是麦克风。优先本机识别（`processLocally`，打开字幕或换频道时顺手 `SpeechRecognition.install()` 下载本机模型）；模型没装好时用浏览器的在线语音服务。识别会隔一阵自己结束，结束后自动重开。
+3. **翻译**：浏览器本机翻译（`Translator`，目标语言 `zh`，第一次用要下载翻译模型），识别中的半句话也实时翻；不可用时可以用访客自己的 Claude API Key（`claude-haiku-5-5`），只翻说完的整句，带上前几句帮助理解。识别语言是中文、粤语时不翻译。
+4. **显示**：画面底部两行，中文在上、原文在下，可选双语 / 中文 / 原文；字幕比画面晚几秒，6 秒没有新内容自动清掉。识别语言按频道地区自动选（意大利 → 意大利语，香港 → 粤语，没有对应的按英语），手动改过的按频道记在 localStorage。
+
+需要支持 `SpeechRecognition.start(MediaStreamTrack)` 的浏览器（目前确认电脑版新版 Chrome 可以），不支持时会提示；视频静音时识别不到声音。
 
 ## 与原站的区别
 

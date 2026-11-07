@@ -33,6 +33,7 @@ const ICONS = {
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   broadcast: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  subtitles: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 14h4M13 14h5M6 10h8M17 10h1"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
   camera: '<path d="M14.5 4h-5L7.5 6.5H4a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
@@ -125,7 +126,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=16">
+  <link rel="stylesheet" href="/resources/common.css?v=17">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -211,7 +212,7 @@ function keyDialog() {
   <form method="dialog" class="ai-dialog-body">
     <div class="ai-dialog-icon">${icon('key', 22)}</div>
     <h2 class="ai-dialog-title" id="ai-dialog-title">设置 Claude API Key</h2>
-    <p class="ai-dialog-desc">AI 选片和 AI 陪看从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
+    <p class="ai-dialog-desc">AI 选片、AI 陪看和字幕翻译从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
     <input class="ai-key-input" type="password" name="key" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API Key">
     <p class="ai-dialog-hint"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">在 Anthropic Console 创建 Key</a><span class="ai-dialog-error" role="alert"></span></p>
     <div class="ai-dialog-actions">
@@ -624,13 +625,25 @@ function tvPage() {
     <div class="embed-responsive embed-responsive-16by9 player-wrap tv-wrap">
       <video id="tv-video" class="embed-responsive-item" controls playsinline preload="none"></video>
       <div class="tv-empty" id="tv-empty">${icon('broadcast', 40)}<p>选一个频道开始看</p></div>
+      <div class="tv-subs" id="tv-subs" hidden aria-live="off"><p class="tv-sub-zh"></p><p class="tv-sub-orig"></p></div>
     </div>
     <div class="tv-now" id="tv-now" hidden>
       <div class="tv-now-logo"></div>
       <div class="tv-now-body"><h1 class="tv-now-name"></h1><p class="tv-now-meta"></p></div>
+      <button type="button" class="pill-btn pill-btn-sm tv-subs-btn" aria-pressed="false" title="用浏览器语音识别生成字幕">${icon('subtitles', 15)}<span>字幕</span></button>
       <button type="button" class="pill-btn pill-btn-sm tv-fav-btn" aria-pressed="false">${icon('star', 15)}<span>收藏</span></button>
     </div>
     <div class="tv-lines" id="tv-lines"></div>
+    <div class="tv-subs-bar" id="tv-subs-bar" hidden>
+      <div class="tv-subs-modes" role="group" aria-label="字幕显示">
+        <button type="button" data-mode="both" aria-pressed="false">双语</button>
+        <button type="button" data-mode="zh" aria-pressed="false">中文</button>
+        <button type="button" data-mode="orig" aria-pressed="false">原文</button>
+      </div>
+      <label class="tv-subs-lang">识别语言<select id="tv-sub-lang"></select></label>
+      <button type="button" class="pill-btn pill-btn-sm tv-subs-key" hidden>${icon('key', 14)}用 Claude 翻译</button>
+      <p class="tv-subs-status text-muted" role="status" aria-live="polite"></p>
+    </div>
     <p class="tv-status text-muted" id="tv-status" role="status" aria-live="polite"></p>
   </div>
   <div class="page-head page-head-row tv-head">
@@ -652,10 +665,11 @@ function tvPage() {
   <div class="tv-grid" id="tv-grid"></div>
   <div class="tv-sentinel" id="tv-sentinel" aria-hidden="true"></div>
   <p class="tv-note text-muted">频道和直播地址来自 <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a> 公开整理的直播源，本站每 6 小时自动检测一次，只列出浏览器能直接播放的频道；完整列表（含只能在播放器里看的地址）见上方 M3U / TXT。有些频道有地区限制或不是 24 小时播出，播不了时会自动换线路。</p>
-</div>`;
+</div>
+${keyDialog()}`;
   return layout({
     title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
-    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=1"></script>',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=2"></script><script type="module" src="/resources/tv-subs.js?v=1"></script>',
   });
 }
 
