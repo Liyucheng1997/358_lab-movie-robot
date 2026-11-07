@@ -7,6 +7,12 @@
   var heading = document.querySelector('.main h5');
   heading.textContent = q ? '「' + q + '」的搜索结果' : '搜索';
   if (!q) return;
+  var fallback = document.querySelector('.ai-fallback');
+  if (fallback) {
+    fallback.querySelector('a').href = base + '?ai=' + encodeURIComponent(q);
+    fallback.querySelector('.ai-fallback-q').textContent = q;
+    fallback.hidden = false;
+  }
   box.textContent = '正在搜索…';
   fetch(base + 'catalog.json').then(function (r) {
     if (!r.ok) throw new Error('目录加载失败');

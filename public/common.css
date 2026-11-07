@@ -365,6 +365,22 @@ a.result-info:hover, a.result-info:focus { background: var(--panel-2); color: va
 .empty-state .page-title { margin: 12px 0 8px; font-size: 24px; }
 .empty-state p { margin-bottom: 24px; }
 
+/* ---------- 首页大搜索框：搜索 + AI 推荐 ---------- */
+.omni { max-width: 680px; gap: 10px; }
+.omni .omni-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0 18px; background: var(--fill); color: var(--text); }
+.omni .omni-btn:hover { background: var(--fill-hover); color: var(--text); }
+.omni .omni-btn.is-primary { background: var(--primary); color: #fff; }
+.omni .omni-btn.is-primary:hover { background: var(--primary-hover); }
+.omni .omni-btn + .omni-btn { margin-left: -4px; }
+.omni.is-busy .omni-ai .ico { animation: ai-pulse .9s ease-in-out infinite alternate; }
+.omni-extras { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; max-width: 760px; margin: 16px auto 0; }
+.omni-extras .ai-examples { display: contents; }
+.omni-extras .ai-key-btn { color: var(--text-2); }
+.ai-panel[hidden] { display: none; }
+.ai-fallback { margin: 16px 4px 0; font-size: 14px; }
+.ai-fallback[hidden] { display: none; }
+.ai-fallback a { display: inline-flex; align-items: center; gap: 6px; }
+
 /* ---------- AI 选片 ---------- */
 .ai-panel { margin-bottom: 32px; padding: 24px 28px 28px; }
 .ai-head { margin-bottom: 16px; }
@@ -779,6 +795,13 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
   .hero-sub { font-size: 15px; margin-top: 8px; }
   .search-hero { height: 50px; margin-top: 22px; padding-left: 16px; }
   .search-hero .search-btn { height: 40px; padding: 0 18px; }
+  .omni { gap: 8px; padding-right: 5px; }
+  .omni .omni-btn { padding: 0 12px; }
+  .omni .omni-ai .ico { display: none; }
+  .omni > .ico { display: none; }
+  .omni-extras { flex-wrap: nowrap; justify-content: flex-start; margin: 14px -16px 0; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+  .omni-extras::-webkit-scrollbar { display: none; }
+  .omni-extras li, .omni-extras > button { flex: none; }
 
   .page-head { margin: 8px 0 16px; }
   .page-title, #video_title { font-size: 26px; }

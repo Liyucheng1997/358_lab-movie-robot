@@ -40,17 +40,70 @@ const SYSTEM = `你是「看片机器人」影视站的选片助手。用户会�
 - summary 用一句话复述你理解的需求。
 - 如果描述与影视无关，在 summary 里礼貌说明，picks 返回空数组。`;
 
-const $ = (sel) => panel.querySelector(sel);
-const form = $('.ai-form');
-const input = $('.ai-input');
-const submit = $('.ai-submit');
-const status = $('.ai-status');
-const results = $('.ai-results');
+// 首页大搜索框：搜索和 AI 推荐共用
+const omni = document.getElementById('omni');
+const input = omni.querySelector('.omni-input');
+const searchBtn = omni.querySelector('.omni-search');
+const aiBtn = omni.querySelector('.omni-ai');
+const extras = document.querySelector('.omni-extras');
+const status = panel.querySelector('.ai-status');
+const results = panel.querySelector('.ai-results');
 function syncKeyState(has) {
-  panel.classList.toggle('has-key', has);
-  $('.ai-key-label').textContent = has ? '已设置 Key' : 'API Key';
+  extras.classList.toggle('has-key', has);
+  extras.querySelector('.ai-key-label').textContent = has ? '已设置 Key' : 'API Key';
 }
-$('.ai-key-btn').addEventListener('click', () => openKeyDialog());
+extras.querySelector('.ai-key-btn').addEventListener('click', () => openKeyDialog());
+
+// ---------- 回车走搜索还是 AI ----------
+// 像描述（带「想看」「适合」「类似」之类的词、有标点或比较长）→ AI；像片名、人名 → 搜索
+const DESCRIBE = /想看|想要|适合|类似|像《|那种|那样|来点|来部|有没有|推荐|几部|一部|什么片|好看的|心情|周末|晚上|下班|下雨|一个人|全家|孩子|情侣|治愈|烧脑|轻松|好笑|搞笑|感人|催泪|刺激|下饭|不费脑|[，,。！？?!]/;
+function guessMode(q) {
+  q = q.trim();
+  if (!q) return 'search';
+  if (DESCRIBE.test(q)) return 'ai';
+  return q.length > 16 ? 'ai' : 'search';
+}
+// 窄屏输入框短，换成短一点的提示
+if (window.matchMedia('(max-width: 767px)').matches) input.placeholder = '搜片名，或说说想看什么';
+let mode = 'search';
+let manual = false; // 用户点过按钮后，同一段文字不再自动切换
+function setMode(m) {
+  mode = m;
+  searchBtn.classList.toggle('is-primary', m === 'search');
+  aiBtn.classList.toggle('is-primary', m === 'ai');
+  searchBtn.setAttribute('aria-pressed', String(m === 'search'));
+  aiBtn.setAttribute('aria-pressed', String(m === 'ai'));
+  input.enterKeyHint = m === 'ai' ? 'go' : 'search';
+}
+input.addEventListener('input', () => {
+  if (!input.value.trim()) manual = false;
+  if (!manual) setMode(guessMode(input.value));
+});
+input.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  if (mode === 'ai') { e.preventDefault(); startAI(); }
+  // 搜索：交给表单原生提交到搜索页
+});
+omni.addEventListener('submit', (e) => {
+  if (!input.value.trim()) { e.preventDefault(); input.focus(); return; }
+  manual = true;
+  setMode('search');
+});
+aiBtn.addEventListener('click', () => {
+  if (current && current.controller) return current.controller.abort();
+  startAI();
+});
+function startAI() {
+  const prompt = input.value.trim();
+  manual = true;
+  setMode('ai');
+  if (!prompt) { input.focus(); return; }
+  run(prompt, false);
+}
+panel.querySelector('.ai-close').addEventListener('click', () => {
+  if (current && current.controller) current.controller.abort();
+  panel.hidden = true;
+});
 
 // ---------- 站内条目匹配 ----------
 // 忽略大小写、空格和标点；片名（含原名、又名）一致且年份相差不超过 1 年才算同一部
@@ -192,8 +245,8 @@ function render(data, prompt) {
 }
 
 function setBusy(busy) {
-  panel.classList.toggle('is-busy', busy);
-  submit.querySelector('span').textContent = busy ? '停止' : '推荐';
+  omni.classList.toggle('is-busy', busy);
+  aiBtn.querySelector('span').textContent = busy ? '停止' : 'AI 推荐';
 }
 
 async function run(prompt, more) {
@@ -204,7 +257,9 @@ async function run(prompt, more) {
   current = { prompt, shown, controller };
   setBusy(true);
   setStatus('');
+  panel.hidden = false;
   skeleton();
+  panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   try {
     const data = await recommend(prompt, shown, controller.signal);
     if (current.controller !== controller) return;
@@ -227,24 +282,19 @@ async function run(prompt, more) {
   }
 }
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (current && current.controller) return current.controller.abort();
-  const prompt = input.value.trim();
-  if (!prompt) return input.focus();
-  run(prompt, false);
-});
-input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-    e.preventDefault();
-    form.requestSubmit();
-  }
-});
-panel.querySelectorAll('.ai-examples button').forEach((btn) => {
+extras.querySelectorAll('.ai-examples button').forEach((btn) => {
   btn.addEventListener('click', () => {
     input.value = btn.textContent;
-    run(input.value, false);
+    startAI();
   });
 });
+
+// 搜索页「让 AI 推荐」跳回首页时带 ?ai=关键词，直接交给 AI
+const fromSearch = new URLSearchParams(location.search).get('ai');
+if (fromSearch && fromSearch.trim()) {
+  history.replaceState(null, '', location.pathname);
+  input.value = fromSearch.trim().slice(0, 300);
+  startAI();
+}
 
 onKeyChange(syncKeyState);

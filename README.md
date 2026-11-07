@@ -45,7 +45,7 @@ npm run dev          # 修改代码后自动重启
 
 | URL | 说明 |
 | --- | --- |
-| `/` | 首页：搜索框 + AI 选片 + 为你推荐 + 侧栏继续观看 + 热门电影 / 热门剧集 + 一周口碑榜 |
+| `/` | 首页：搜索与 AI 选片合一的大搜索框 + 为你推荐 + 侧栏继续观看 + 热门电影 / 热门剧集 + 一周口碑榜 |
 | `/foryou.html` | 个性化推荐流：无限下拉、「我的口味」兴趣画像、类型偏好、重置 |
 | `/hot/index-movie-{标签}.html`、`-p-{页}.html` | 电影分类（热门、最新、经典、豆瓣高分…豆瓣top250），每页 24 部 |
 | `/hot/index-tv-{标签}.html` | 剧集分类（热门、美剧、英剧、韩剧、日剧、国产剧…） |
@@ -68,7 +68,7 @@ npm run dev          # 修改代码后自动重启
 
 ## AI 选片
 
-首页可以用自然语言描述想看的内容（如「下雨的周末，想看治愈系日本电影」），由 Claude Opus 5.5（`claude-opus-5-5`）推荐 6 部影片并说明理由，「换一批」会排除已推荐过的片子。
+首页大搜索框同时负责搜索和 AI 选片：「搜索」「AI 推荐」两个按钮并排，高亮的按钮就是回车执行的那个。输入像片名、人名时高亮搜索（表单原生提交到搜索页）；带「想看」「适合」「类似」「来点」等描述词、有标点或超过 16 个字时高亮 AI 推荐；点另一个按钮即切换。AI 推荐由 Claude Opus 5.5（`claude-opus-5-5`）给出 6 部影片和理由，「换一批」会排除已推荐过的片子。搜索结果页底部的「让 AI 按「关键词」推荐」跳回首页（`/?ai=关键词`）直接交给 AI。
 
 - 访客点「API Key」填入自己的 Anthropic API Key（[在 Console 创建](https://console.anthropic.com/settings/keys)）。Key 只存在该浏览器的 localStorage，由浏览器直接请求 `api.anthropic.com`，不经过本站服务器，费用计入访客自己的账号。部分地区需要代理才能连上。
 - 使用官方 [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) 1.3.0，以 esbuild 打包为单文件 `public/vendor/anthropic-sdk.mjs`（许可证同目录），点推荐时才按需加载。请求使用结构化输出（JSON Schema）、`effort: low` 以缩短等待，并开启服务端拒答回退（`fallbacks: "default"`）。

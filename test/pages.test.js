@@ -33,8 +33,20 @@ test('首页带 AI 选片面板，静态版脚本和 SDK 走仓库子目录', ()
   assert.ok(home.includes('id="ai-panel"'));
   assert.ok(home.includes('<dialog class="ai-dialog"'));
   const html = staticHTML(home, '2026-10-26');
-  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=2"></script>`));
+  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=4"></script>`));
   assert.ok(home.includes('id="continue-watch"'));
+});
+
+test('首页搜索和 AI 推荐合成一个框；搜索页可以把关键词交给 AI', () => {
+  const home = views.homePage({ movies: [], tvs: [], weekly: null });
+  assert.equal(home.split('role="search"').length - 1, 1, '首页只有一个搜索框');
+  assert.ok(home.includes('id="omni"'));
+  assert.ok(home.includes('omni-search') && home.includes('omni-ai'));
+  const page = views.searchPage('下雨天 治愈', { items: [], total: 0, hasNext: false });
+  assert.ok(page.includes(`href="/?ai=${encodeURIComponent('下雨天 治愈')}"`));
+  const html = staticHTML(page, '2026-11-07');
+  assert.ok(html.includes(`href="${base}?ai=`));
+  assert.match(views.searchPage(''), /class="ai-fallback" hidden/);
 });
 
 test('播放页带续播提示和 AI 陪看面板，影片资料传给陪看脚本', () => {

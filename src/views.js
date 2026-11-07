@@ -83,13 +83,24 @@ function bottomNav(active) {
   return `<nav class="tabbar" aria-label="底部导航">${links}</nav>`;
 }
 
+// 首页：搜索和 AI 选片合成一个框，「搜索」「AI 推荐」两个按钮；
+// 高亮的按钮是回车执行的那个，随输入自动切换（片名人名 → 搜索，描述 → AI），点另一个按钮即切换
 function hero() {
   return `
 <section class="hero">
   <div class="container">
     <h1 class="hero-title">今晚想看点<em>什么</em>？</h1>
-    <p class="hero-sub">豆瓣热门、口碑榜单与多线路播放，一处搞定。</p>
-    ${searchForm(true)}
+    <p class="hero-sub">搜片名、演员直接找；说说想看什么，交给 AI 挑。</p>
+    <form action="/search" method="get" class="search-pill search-hero omni" id="omni" role="search">
+      ${icon('search', 20)}
+      <input name="q" type="search" maxlength="300" class="search-input omni-input" placeholder="搜片名、演员，或者说说你想看什么" aria-label="搜索影片，或描述想看的内容" autocomplete="off" enterkeyhint="search">
+      <button type="submit" class="search-btn omni-btn omni-search is-primary" aria-pressed="true">搜索</button>
+      <button type="button" class="search-btn omni-btn omni-ai" aria-pressed="false">${icon('sparkles', 15)}<span>AI 推荐</span></button>
+    </form>
+    <div class="omni-extras">
+      <ul class="ai-examples">${AI_EXAMPLES.map((t) => `<li><button type="button">${esc(t)}</button></li>`).join('')}</ul>
+      <button type="button" class="pill-btn pill-btn-sm ai-key-btn" aria-haspopup="dialog">${icon('key', 14)}<span class="ai-key-label">API Key</span><span class="ai-key-dot" aria-hidden="true"></span></button>
+    </div>
   </div>
 </section>`;
 }
@@ -110,7 +121,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=13">
+  <link rel="stylesheet" href="/resources/common.css?v=15">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -172,22 +183,17 @@ function rankList(title, items, moreHref) {
 const AI_EXAMPLES = ['下雨的周末，想看治愈系日本电影', '烧脑反转的悬疑片，像《消失的爱人》那种', '适合全家一起看的动画',
   '九十年代的港片经典', '节奏快、一晚上能追完一季的美剧'];
 
+// AI 推荐结果：在首页大搜索框里点「AI 推荐」后出现，逻辑在 public/ai.js
 function aiPanel() {
   return `
-<section class="card ai-panel" id="ai-panel" aria-labelledby="ai-title">
+<section class="card ai-panel" id="ai-panel" aria-labelledby="ai-title" hidden>
   <div class="card-head ai-head">
     <div>
       <div class="eyebrow">AI PICKS</div>
-      <h2 class="section-h" id="ai-title">说说你想看什么</h2>
-      <p class="card-desc">用一句话描述心情、场合或口味，Claude Opus 5.5 帮你挑片。</p>
+      <h2 class="section-h" id="ai-title">Claude 为你挑的片</h2>
     </div>
-    <button type="button" class="pill-btn pill-btn-sm ai-key-btn" aria-haspopup="dialog">${icon('key', 15)}<span class="ai-key-label">API Key</span><span class="ai-key-dot" aria-hidden="true"></span></button>
+    <button type="button" class="cmp-icon-btn ai-close" aria-label="收起 AI 推荐" title="收起">${icon('close', 16)}</button>
   </div>
-  <form class="ai-form" onsubmit="return false">
-    <textarea class="ai-input" name="prompt" rows="2" maxlength="500" placeholder="比如：下班后想放空，来点轻松好笑、不费脑子的电影" aria-label="描述你想看的影片"></textarea>
-    <button type="submit" class="pill-btn pill-btn-primary ai-submit">${icon('sparkles', 16)}<span>推荐</span></button>
-  </form>
-  <ul class="ai-examples">${AI_EXAMPLES.map((t) => `<li><button type="button">${esc(t)}</button></li>`).join('')}</ul>
   <p class="ai-status" role="status" aria-live="polite" hidden></p>
   <div class="ai-results" hidden></div>
 </section>
@@ -269,7 +275,7 @@ function homePage({ movies, tvs, weekly }) {
 </div>`;
   return layout({
     title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：AI 选片、热门电影、热门剧集、口碑榜单`,
-    scripts: `<script>renderContinue();</script><script type="module" src="/resources/ai.js?v=2"></script>${REC_SCRIPTS}`,
+    scripts: `<script>renderContinue();</script><script type="module" src="/resources/ai.js?v=4"></script>${REC_SCRIPTS}`,
   });
 }
 
@@ -397,6 +403,7 @@ function searchPage(q, result = { items: [], total: 0, hasNext: false }, error =
   </div>
   <div class="card search-list">${list}</div>
   ${pager}
+  <p class="ai-fallback"${q ? '' : ' hidden'}><a href="/?ai=${esc(encodeURIComponent(q))}">${icon('sparkles', 14)}<span>没找到想要的？让 AI 按「<span class="ai-fallback-q">${esc(q)}</span>」推荐</span></a></p>
 </div>`;
   return layout({
     title: q ? `${q}-搜索结果${page > 1 ? `-第${page}页` : ''}` : '搜索',
