@@ -80,7 +80,7 @@ test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕�
   assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-btn"'));
   assert.ok(page.includes('id="tv-subs"') && page.includes('id="tv-subs-bar"') && page.includes('id="tv-sub-lang"'));
   assert.ok(page.includes('<dialog class="ai-dialog"'));
-  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=1"></script>'));
+  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=3"></script>'));
 });
 
 test('直播字幕：按地区选识别语言、中文不用翻译、长字幕只留结尾', async () => {
@@ -97,10 +97,31 @@ test('直播字幕：按地区选识别语言、中文不用翻译、长字幕�
   const long = 'one two three four five six seven eight nine ten';
   const cut = subs.tail(long, 20);
   assert.ok(cut.startsWith('…') && long.endsWith(cut.slice(1)) && cut.length <= 21);
-  assert.equal(subs.tail('一二三四五六七八九十'.repeat(5)).length, 41);
+  assert.equal(subs.tail('一二三四五六七八九十'.repeat(8)).length, 61);
   // 中文译文里夹着空格也不能截成只剩省略号
   const zh = subs.tail('延续民主党候选人的优势 ' + '似乎有某种被创造出来的局面'.repeat(4));
   assert.ok(zh.length > 30 && zh.startsWith('…'));
   // 一个很长的词也不能把整句截没
   assert.ok(subs.tail('x '.repeat(10) + 'y'.repeat(200), 50).length > 40);
+});
+
+test('直播字幕：说完的一段话切成长度相近的几条，按阅读时长显示', async () => {
+  const subs = await import('../public/tv-subs.js');
+  assert.deepEqual(subs.splitSentences(''), []);
+  assert.deepEqual(subs.splitSentences('Buonasera a tutti.'), ['Buonasera a tutti.']);
+  assert.deepEqual(subs.splitSentences('Hello there. How are you? Fine!'), ['Hello there.', 'How are you?', 'Fine!']);
+  // 没有标点的长句按词切，每条不超过上限、不丢词
+  const long = 'abbiamo già detto che questo si deve alla vittoria ultima strepitosa vittoria ricco ogni 40 punti per lui dietro però Alessandro che arriva';
+  const parts = subs.splitSentences(long);
+  assert.ok(parts.length >= 2);
+  assert.ok(parts.every((x) => x.length <= 84));
+  assert.equal(parts.join(' '), long);
+  // 中文优先在逗号处断
+  const zh = subs.splitSentences('我们已经说过，这要归功于胜利，最后一场惊人的胜利，富人每四十分但是亚历山德罗在后面追赶得很紧');
+  assert.ok(zh.length >= 2 && zh.every((x) => x.length <= 32));
+  assert.equal(zh.join(''), '我们已经说过，这要归功于胜利，最后一场惊人的胜利，富人每四十分但是亚历山德罗在后面追赶得很紧');
+  // 显示时长：短句至少 1.6 秒，长句最多 6 秒，积压时放快
+  assert.equal(subs.cueDuration({ orig: 'Ciao', zh: '你好' }, 0), 1600);
+  assert.equal(subs.cueDuration({ orig: 'word '.repeat(40), zh: '' }, 0), 6000);
+  assert.ok(subs.cueDuration({ orig: 'word '.repeat(10), zh: '' }, 4) < subs.cueDuration({ orig: 'word '.repeat(10), zh: '' }, 0));
 });

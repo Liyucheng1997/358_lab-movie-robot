@@ -642,6 +642,7 @@ function tvPage() {
       </div>
       <label class="tv-subs-lang">识别语言<select id="tv-sub-lang"></select></label>
       <button type="button" class="pill-btn pill-btn-sm tv-subs-key" hidden>${icon('key', 14)}用 Claude 翻译</button>
+      <button type="button" class="pill-btn pill-btn-sm tv-subs-local" hidden>下载本机识别模型</button>
       <p class="tv-subs-status text-muted" role="status" aria-live="polite"></p>
     </div>
     <p class="tv-status text-muted" id="tv-status" role="status" aria-live="polite"></p>
@@ -669,7 +670,7 @@ function tvPage() {
 ${keyDialog()}`;
   return layout({
     title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
-    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=2"></script><script type="module" src="/resources/tv-subs.js?v=1"></script>',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=2"></script><script type="module" src="/resources/tv-subs.js?v=3"></script>',
   });
 }
 

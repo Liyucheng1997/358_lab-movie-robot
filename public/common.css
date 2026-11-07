@@ -802,7 +802,7 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
   height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--fill); color: var(--text); font-size: 13px;
 }
 .tv-subs-key { gap: 5px; }
-.tv-subs-key[hidden] { display: none; }
+.tv-subs-key[hidden], .tv-subs-local[hidden] { display: none; }
 .tv-subs-status { flex-basis: 100%; min-height: 0; margin: 0 2px; font-size: 12px; line-height: 1.6; }
 .tv-subs-status:empty { display: none; }
 .tv-line {
