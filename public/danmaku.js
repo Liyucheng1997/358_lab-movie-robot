@@ -65,6 +65,17 @@
       ptr = lowerBound(lastT);
     }
 
+    // AI 陪看用：取某个时间点前后已加载的弹幕文字（去重，按时间先后）
+    window.danmakuNear = function (t, before, after) {
+      if (!ctx) return [];
+      var out = [], seen = {};
+      for (var i = lowerBound(t - before); i < items.length && items[i].at <= t + after; i++) {
+        var text = String(items[i].text || '').trim();
+        if (text && !seen[text]) { seen[text] = 1; out.push(text); }
+      }
+      return out;
+    };
+
     function summary() {
       if (!ctx) return;
       var names = Object.keys(sources).filter(function (k) { return sources[k]; });

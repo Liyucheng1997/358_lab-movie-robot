@@ -1,7 +1,7 @@
 // AI 选片：用访客自己的 API Key 在浏览器里直接调用 Claude，按推荐片名回查站内条目。
 // 实时版通过 /api/search 查豆瓣；静态版只在 catalog.json 已收录的影片里匹配。
-const MODEL = 'claude-opus-5-5';
-const KEY_STORE = 'anthropic_api_key';
+import { MODEL, readKey, onKeyChange, openKeyDialog, createClient, friendlyError, FALLBACK } from './ai-common.js?v=1';
+
 const base = document.body.dataset.staticBase || '';
 const isStatic = Boolean(base);
 const panel = document.getElementById('ai-panel');
@@ -46,52 +46,11 @@ const input = $('.ai-input');
 const submit = $('.ai-submit');
 const status = $('.ai-status');
 const results = $('.ai-results');
-const dialog = document.querySelector('.ai-dialog');
-const keyInput = dialog.querySelector('.ai-key-input');
-const keyError = dialog.querySelector('.ai-dialog-error');
-
-function readKey() {
-  try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; }
-}
-function writeKey(key) {
-  try { key ? localStorage.setItem(KEY_STORE, key) : localStorage.removeItem(KEY_STORE); } catch (e) {}
-  syncKeyState();
-}
-function syncKeyState() {
-  const has = Boolean(readKey());
+function syncKeyState(has) {
   panel.classList.toggle('has-key', has);
   $('.ai-key-label').textContent = has ? '已设置 Key' : 'API Key';
-  dialog.querySelector('.ai-key-clear').hidden = !has;
-}
-
-// ---------- API Key 弹窗 ----------
-let afterSave = null;
-function openKeyDialog(then) {
-  afterSave = then || null;
-  keyInput.value = readKey();
-  keyError.textContent = '';
-  dialog.showModal();
-  keyInput.focus();
 }
 $('.ai-key-btn').addEventListener('click', () => openKeyDialog());
-dialog.querySelector('.ai-key-cancel').addEventListener('click', () => dialog.close());
-dialog.querySelector('.ai-key-clear').addEventListener('click', () => {
-  writeKey('');
-  dialog.close();
-});
-dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
-dialog.querySelector('form').addEventListener('submit', (e) => {
-  const key = keyInput.value.trim();
-  if (!/^sk-ant-\S{10,}$/.test(key)) {
-    e.preventDefault();
-    keyError.textContent = 'Key 应以 sk-ant- 开头';
-    return;
-  }
-  writeKey(key);
-  const then = afterSave;
-  afterSave = null;
-  if (then) setTimeout(then);
-});
 
 // ---------- 站内条目匹配 ----------
 // 忽略大小写、空格和标点；片名（含原名、又名）一致且年份相差不超过 1 年才算同一部
@@ -130,10 +89,8 @@ const playUrl = (id) => (isStatic ? `${base}play/${id}/` : `/play/${id}`);
 const searchUrl = (q) => (isStatic ? `${base}search/?q=` : '/search?q=') + encodeURIComponent(q);
 
 // ---------- 调用 Claude ----------
-let sdk = null;
 async function recommend(prompt, exclude, signal) {
-  sdk = sdk || import('./vendor/anthropic-sdk.mjs');
-  const { default: Anthropic } = await sdk;
+  const { Anthropic, client } = await createClient();
   let system = SYSTEM;
   if (isStatic) {
     // 静态版只能播放快照里的影片，把片单交给模型优先挑选
@@ -143,14 +100,11 @@ async function recommend(prompt, exclude, signal) {
   let content = prompt;
   if (exclude.length) content += `\n\n（请换一批，不要再推荐：${exclude.join('、')}）`;
 
-  const client = new Anthropic({ apiKey: readKey(), dangerouslyAllowBrowser: true, maxRetries: 1 });
   try {
     const msg = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      // 被安全分类器拒绝时由服务端按类别自动换用备选模型
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      ...FALLBACK,
       output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
       system,
       messages: [{ role: 'user', content }],
@@ -161,14 +115,8 @@ async function recommend(prompt, exclude, signal) {
     if (!text) throw new Error('没有收到推荐结果，请再试一次。');
     return JSON.parse(text.text);
   } catch (e) {
-    if (e instanceof Anthropic.APIUserAbortError) throw e;
-    if (e instanceof Anthropic.AuthenticationError) throw Object.assign(new Error('API Key 无效，请重新设置。'), { badKey: true });
-    if (e instanceof Anthropic.PermissionDeniedError) throw new Error('这个 Key 没有调用 Claude Opus 5.5 的权限。');
-    if (e instanceof Anthropic.RateLimitError) throw new Error('请求太频繁或额度已用完，稍后再试。');
-    if (e instanceof Anthropic.APIConnectionError) throw new Error('连不上 api.anthropic.com，请检查网络（部分地区需要代理）。');
-    if (e instanceof Anthropic.APIError) throw new Error(`Claude 接口出错（${e.status || '网络'}）：${(e.error && e.error.error && e.error.error.message) || e.message}`);
     if (e instanceof SyntaxError) throw new Error('推荐结果格式异常，请再试一次。');
-    throw e;
+    throw friendlyError(Anthropic, e);
   }
 }
 
@@ -299,4 +247,4 @@ panel.querySelectorAll('.ai-examples button').forEach((btn) => {
   });
 });
 
-syncKeyState();
+onKeyChange(syncKeyState);

@@ -33,5 +33,23 @@ test('首页带 AI 选片面板，静态版脚本和 SDK 走仓库子目录', ()
   assert.ok(home.includes('id="ai-panel"'));
   assert.ok(home.includes('<dialog class="ai-dialog"'));
   const html = staticHTML(home, '2026-10-26');
-  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=1"></script>`));
+  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=2"></script>`));
+  assert.ok(home.includes('id="continue-watch"'));
+});
+
+test('播放页带续播提示和 AI 陪看面板，影片资料传给陪看脚本', () => {
+  const d = {
+    id: '1292052', title: '肖申克的救赎', originalTitle: 'The Shawshank Redemption', aka: [], year: '1994', isTv: false,
+    cover: 'https://img3.doubanio.com/p.jpg', trailers: [], vendors: [], intro: '希望让人自由。', rating: '9.7', ratingCount: '1',
+    genres: ['剧情', '犯罪'], countries: ['美国'], directors: ['弗兰克·德拉邦特'], actors: ['蒂姆·罗宾斯'], episodes: '',
+    durations: ['142分钟'], pubdate: ['1994-09-10'], url: 'https://movie.douban.com/subject/1292052/',
+  };
+  const html = views.playPage(d);
+  assert.ok(html.includes('id="resume-bar"'));
+  assert.ok(html.includes('id="companion"'));
+  assert.ok(html.includes('<dialog class="ai-dialog"'));
+  assert.match(html, /companion\.js\?v=\d+"><\/script>[\s\S]*initPlay\(/);
+  assert.ok(html.includes('"originalTitle":"The Shawshank Redemption"'));
+  const page = staticHTML(html, '2026-11-07');
+  assert.ok(page.includes(`src="${base}resources/companion.js?v=1"`));
 });

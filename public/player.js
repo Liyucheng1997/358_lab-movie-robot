@@ -77,6 +77,15 @@
     var selectedType = '';
     var probeAbort = null;
     var autoPanel = null; // 自动选中的线路；用户手动选择后为 null
+    // 播放历史：上次的线路、选集和进度；打开页面时自动选回去，点播放从上次的位置继续
+    var watchHist = window.WatchHistory || null;
+    var resume = watchHist && watchHist.get(record.id);
+    if (!resume || resume.index == null) resume = null;
+    var resumeBar = document.getElementById('resume-bar');
+    var playing = null; // 正在播放的选集 { panel, index, epTitle }
+    var pendingSeek = 0; // 加载完成后跳到的位置（秒）
+    var started = false; // 本次打开页面后是否真正开始播放过
+    var lastSave = 0;
 
     // 弹幕按「第几集」对应到各平台：优先用选集标题里的集数，标题没有集数时按顺序
     function episodeNumber(panel, button) {
@@ -86,11 +95,26 @@
       return m ? Number(m[1]) : index + 1;
     }
 
-    function select(button, url, type, poster, autoplay, panel) {
+    // seek：指定起播位置；不传时，换线路看同一集会接着当前进度播放
+    function select(button, url, type, poster, autoplay, panel, seek) {
       selected = true;
-      document.dispatchEvent(new CustomEvent('player:select', {
-        detail: panel ? { kind: 'episode', ep: episodeNumber(panel, button), label: panel.line.name + ' · ' + button.textContent } : { kind: 'trailer' },
-      }));
+      var index = panel ? panel.buttons.indexOf(button) : -1;
+      var epTitle = panel ? String((panel.line.episodes[index] || {}).title || '') : '';
+      var carry = panel && playing && playing.epTitle === epTitle && video.currentTime > 5 ? video.currentTime : 0;
+      pendingSeek = seek != null ? seek : carry;
+      if (playing && (!panel || playing.epTitle !== epTitle)) hideResume();
+      playing = panel ? { panel: panel, index: index, epTitle: epTitle } : null;
+      var detail = panel ? {
+        kind: 'episode', ep: episodeNumber(panel, button), label: panel.line.name + ' · ' + button.textContent,
+        line: panel.line.name, index: index, epTitle: epTitle, epCount: panel.line.episodes.length,
+      } : { kind: 'trailer' };
+      window.lastPlayerSelect = detail;
+      document.dispatchEvent(new CustomEvent('player:select', { detail: detail }));
+      // 用户手动点选时立刻记下线路和选集；自动预选不写，避免覆盖上次记录
+      if (panel && autoplay && watchHist) {
+        watchHist.update(record.id, { line: panel.line.name, flag: panel.line.flag, index: index, epTitle: epTitle,
+          epCount: panel.line.episodes.length, pos: Math.round(pendingSeek), dur: 0 });
+      }
       selectedType = type;
       autoPanel = autoplay ? null : panel;
       generation++;
@@ -113,10 +137,13 @@
           if (current === generation) status.textContent = error.name === 'NotAllowedError'
             ? '请点击播放器中的播放按钮。' : '此线路无法播放，请切换其他线路。';
         });
-        else status.textContent = '已为你选好可用线路「' + (panel ? panel.line.name : button.textContent) + '」，点击播放即可观看。';
+        else if (!resumeBar || resumeBar.hidden) status.textContent = '已为你选好可用线路「' + (panel ? panel.line.name : button.textContent) + '」，点击播放即可观看。';
+        else status.textContent = '';
       }
       if (type === 'hls' && window.Hls && Hls.isSupported()) {
-        hls = new Hls();
+        // hls.js 直接从续播位置开始加载分片，不用先加载开头再跳
+        hls = new Hls(pendingSeek > 0 ? { startPosition: pendingSeek } : undefined);
+        pendingSeek = 0;
         hls.on(Hls.Events.MANIFEST_PARSED, play);
         hls.on(Hls.Events.ERROR, function (_, data) {
           if (data.fatal && current === generation) {
@@ -149,7 +176,79 @@
     video.addEventListener('error', function () {
       if (video.getAttribute('src')) status.textContent = '播放失败，请切换其他线路。';
     });
-    video.addEventListener('playing', function () { status.textContent = ''; });
+    video.addEventListener('playing', function () {
+      status.textContent = '';
+      started = true;
+      if (resumeBar && !resumeBar.hidden) setTimeout(hideResume, 6000);
+    });
+
+    // ---------- 播放进度 ----------
+    video.addEventListener('loadedmetadata', function () {
+      if (pendingSeek > 0 && (!video.duration || pendingSeek < video.duration - 5)) video.currentTime = pendingSeek;
+      pendingSeek = 0;
+    });
+    function saveProgress(force) {
+      if (!playing || !watchHist || video.currentTime < 3) return;
+      var now = Date.now();
+      if (!force && now - lastSave < 5000) return;
+      lastSave = now;
+      var line = playing.panel.line;
+      watchHist.update(record.id, {
+        line: line.name, flag: line.flag, index: playing.index, epTitle: playing.epTitle, epCount: line.episodes.length,
+        pos: Math.round(video.currentTime), dur: isFinite(video.duration) ? Math.round(video.duration) : 0,
+      });
+    }
+    video.addEventListener('timeupdate', function () { saveProgress(false); });
+    video.addEventListener('pause', function () { saveProgress(true); });
+    video.addEventListener('ended', function () { saveProgress(true); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden) saveProgress(true); });
+
+    // ---------- 续播 ----------
+    function hideResume() { if (resumeBar) resumeBar.hidden = true; }
+    // 在某条线路里找上次那一集：先按选集标题，再按序号；上次已看完就接下一集
+    function resumeTarget(p) {
+      if (!resume) return { i: 0, seek: 0 };
+      var eps = p.line.episodes;
+      var i = -1;
+      for (var k = 0; k < eps.length && resume.epTitle; k++) if (eps[k].title === resume.epTitle) { i = k; break; }
+      if (i < 0) i = Math.min(resume.index || 0, eps.length - 1);
+      if (watchHist.finished(resume)) return i + 1 < eps.length ? { i: i + 1, seek: 0, next: true } : { i: i, seek: 0 };
+      return { i: i, seek: resume.pos || 0 };
+    }
+    function resumeLine(panels) {
+      if (!resume) return null;
+      return panels.filter(function (p) { return p.line.name === resume.line && p.line.flag === resume.flag; })[0]
+        || panels.filter(function (p) { return p.line.name === resume.line; })[0]
+        || panels.filter(function (p) { return resume.flag && p.line.flag === resume.flag; })[0] || null;
+    }
+    // 自动选中某条线路时同样落到上次那一集
+    function autoSelect(p) {
+      var target = resumeTarget(p);
+      var ep = p.line.episodes[target.i];
+      if (resume && playing && playing.epTitle !== ep.title) hideResume();
+      playing = playing && playing.epTitle === ep.title ? playing : null;
+      if (resume) showResume(p, target);
+      select(p.buttons[target.i], ep.url, ep.type, '', false, p, target.seek);
+    }
+    function showResume(p, target) {
+      if (!resumeBar || started) return;
+      var ep = p.line.episodes.length > 1 ? (p.line.episodes[target.i].title || '第 ' + (target.i + 1) + ' 集') : '';
+      var where = target.next ? '上次看完了' + (resume.epTitle || '') + '，接着看「' + ep + '」'
+        : '上次看到' + (ep ? '「' + ep + '」' : '') + ' ' + formatClock(target.seek);
+      var line = p.line.name === resume.line ? '线路「' + p.line.name + '」' : '上次的线路「' + resume.line + '」不可用，已换到「' + p.line.name + '」';
+      resumeBar.querySelector('.resume-text').textContent = where + ' · ' + line + '，点播放继续';
+      resumeBar.querySelector('.resume-restart').hidden = !target.seek;
+      resumeBar.hidden = false;
+    }
+    if (resumeBar) {
+      resumeBar.querySelector('.resume-restart').addEventListener('click', function () {
+        pendingSeek = 0;
+        video.currentTime = 0;
+        hideResume();
+        if (video.paused) video.play().catch(function () {});
+      });
+      resumeBar.querySelector('.resume-close').addEventListener('click', hideResume);
+    }
     document.querySelectorAll('.line-res div[data-src]').forEach(function (button) {
       button.setAttribute('role', 'button');
       button.setAttribute('tabindex', '0');
@@ -243,6 +342,13 @@
       // 并发检测每条线路的第一集；最先检测通过的线路自动选中（不自动播放）
       var signal = probeAbort.signal;
       var done = 0, okCount = 0, next = 0;
+      // 有上次的记录时，不等检测，先直接选回上次的线路和选集
+      var resumePanel = selected ? null : resumeLine(panels);
+      if (resumePanel) {
+        autoSelect(resumePanel);
+        autoPanel = null;
+        showLine(resumePanel);
+      }
       function report() {
         if (done < panels.length) {
           sourceStatus.textContent = '共 ' + panels.length + ' 条线路，正在检测能否播放（' + done + '/' + panels.length + '），已找到 ' + okCount + ' 条可用…';
@@ -261,8 +367,8 @@
         // 用户还没开始看时，把自动选中的线路换成响应最快的那条
         var fastest = panels.filter(function (p) { return p.result && p.result.ok; })
           .sort(function (a, b) { return a.result.ms - b.result.ms; })[0];
-        if (fastest && autoPanel && autoPanel !== fastest && video.paused && !video.currentTime) {
-          select(fastest.buttons[0], fastest.line.episodes[0].url, fastest.line.episodes[0].type, '', false, fastest);
+        if (fastest && autoPanel && autoPanel !== fastest && video.paused && !started) {
+          autoSelect(fastest);
           if (!userPickedTab) active = fastest;
         }
         if (active) showLine(active);
@@ -278,9 +384,14 @@
           if (p.result.ok) {
             okCount++;
             if (!selected) {
-              select(p.buttons[0], p.line.episodes[0].url, p.line.episodes[0].type, '', false, p);
+              autoSelect(p);
               if (!userPickedTab) showLine(p);
             }
+          } else if (p === resumePanel && playing && playing.panel === p && !started) {
+            // 上次的线路检测失效：换到目前最快的可用线路，仍然接着上次那一集
+            var ok = panels.filter(function (o) { return o.result && o.result.ok; })
+              .sort(function (a, b) { return a.result.ms - b.result.ms; })[0];
+            if (ok) { autoSelect(ok); if (!userPickedTab) showLine(ok); } else selected = false;
           }
           report();
           if (done === panels.length) finish();
@@ -307,6 +418,11 @@
           video.pause(); video.removeAttribute('src'); video.load();
           status.textContent = '';
           selected = false;
+          started = false;
+        }
+        if (watchHist) {
+          resume = watchHist.get(record.id);
+          if (!resume || resume.index == null) resume = null;
         }
         if (probeAbort) probeAbort.abort();
         probeAbort = new AbortController();
@@ -319,6 +435,7 @@
     }
     retry.addEventListener('click', load);
     window.addEventListener('pagehide', function () {
+      saveProgress(true);
       if (hls) hls.destroy();
       if (probeAbort) probeAbort.abort();
     });

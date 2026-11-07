@@ -31,6 +31,10 @@ const ICONS = {
   heart: '<path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.3a4.9 4.9 0 0 1 7.5 6.3z"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
+  close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const icon = (name, size = 18) =>
@@ -105,14 +109,14 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=9">
+  <link rel="stylesheet" href="/resources/common.css?v=10">
 </head>
 <body>
 ${topbar(active, isIndex)}
 ${isIndex ? hero() : ''}
 ${body}
 ${bottomNav(active)}
-<script src="/resources/common.js?v=7"></script>
+<script src="/resources/common.js?v=8"></script>
 ${scripts}
 </body>
 </html>`;
@@ -186,11 +190,17 @@ function aiPanel() {
   <p class="ai-status" role="status" aria-live="polite" hidden></p>
   <div class="ai-results" hidden></div>
 </section>
+${keyDialog()}`;
+}
+
+// API Key 弹窗：AI 选片和 AI 陪看共用，逻辑在 public/ai-common.js
+function keyDialog() {
+  return `
 <dialog class="ai-dialog" aria-labelledby="ai-dialog-title">
   <form method="dialog" class="ai-dialog-body">
     <div class="ai-dialog-icon">${icon('key', 22)}</div>
     <h2 class="ai-dialog-title" id="ai-dialog-title">设置 Claude API Key</h2>
-    <p class="ai-dialog-desc">AI 选片从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
+    <p class="ai-dialog-desc">AI 选片和 AI 陪看从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
     <input class="ai-key-input" type="password" name="key" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API Key">
     <p class="ai-dialog-hint"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">在 Anthropic Console 创建 Key</a><span class="ai-dialog-error" role="alert"></span></p>
     <div class="ai-dialog-actions">
@@ -229,6 +239,10 @@ function recStarter() {
 function homePage({ movies, tvs, weekly }) {
   const body = `
 <div class="container main">
+  <section class="v-list" id="continue-watch" hidden>
+    ${sectionHead('CONTINUE', '继续观看', '/history.html', '全部')}
+    <div class="row list-wp"></div>
+  </section>
   ${aiPanel()}
   <section class="v-list rec-section" id="rec-home" data-size="12" hidden>
     ${recHead(true)}
@@ -254,7 +268,7 @@ function homePage({ movies, tvs, weekly }) {
 </div>`;
   return layout({
     title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：AI 选片、热门电影、热门剧集、口碑榜单`,
-    scripts: `<script type="module" src="/resources/ai.js?v=1"></script>${REC_SCRIPTS}`,
+    scripts: `<script>renderContinue();</script><script type="module" src="/resources/ai.js?v=2"></script>${REC_SCRIPTS}`,
   });
 }
 
@@ -390,6 +404,31 @@ function searchPage(q, result = { items: [], total: 0, hasNext: false }, error =
   });
 }
 
+// AI 陪看：播放器右侧的聊天栏（窄屏为底部抽屉），逻辑在 public/companion.js
+function companionPanel() {
+  return `
+<aside class="companion" id="companion" aria-labelledby="cmp-title">
+  <div class="cmp-inner">
+    <div class="cmp-head">
+      <span class="cmp-avatar" aria-hidden="true">${icon('sparkles', 16)}</span>
+      <div class="cmp-head-text"><h2 class="cmp-title" id="cmp-title">AI 陪看</h2><p class="cmp-sub"></p></div>
+      <button type="button" class="cmp-icon-btn cmp-key" aria-haspopup="dialog" title="设置 API Key">${icon('key', 16)}<span class="ai-key-dot" aria-hidden="true"></span></button>
+      <button type="button" class="cmp-icon-btn cmp-gear" aria-expanded="false" aria-controls="cmp-settings" title="陪看风格">${icon('sliders', 16)}</button>
+      <button type="button" class="cmp-icon-btn cmp-close" title="收起">${icon('close', 16)}</button>
+    </div>
+    <div class="cmp-settings" id="cmp-settings" hidden></div>
+    <div class="cmp-log" role="log" aria-live="polite"></div>
+    <ul class="cmp-quick"></ul>
+    <form class="cmp-form" autocomplete="off">
+      <textarea class="cmp-input" rows="1" maxlength="400" enterkeyhint="send" placeholder="问点什么，或者一起吐槽…" aria-label="和 AI 聊这部片"></textarea>
+      <button type="submit" class="cmp-send" aria-label="发送">${icon('send', 16)}</button>
+    </form>
+  </div>
+</aside>
+<button type="button" class="cmp-fab" id="cmp-fab" aria-controls="companion" hidden>${icon('chat', 20)}<span>AI 陪看</span></button>
+${keyDialog()}`;
+}
+
 function playPage(d) {
   const trailers = d.trailers;
   const first = trailers[0];
@@ -435,6 +474,8 @@ function playPage(d) {
 
   const body = `
 <div class="container main play-main">
+  <div class="watch-row" id="watch-row">
+  <div class="watch-main">
   <div class="embed-responsive embed-responsive-16by9 player-wrap">${player}</div>
   <div class="dm-bar" id="dm-bar">
     <button type="button" class="dm-switch active" id="dm-toggle" aria-pressed="true" title="弹幕开关">弹</button>
@@ -446,7 +487,15 @@ function playPage(d) {
   </div>
   <div class="card dm-panel" id="dm-panel" hidden></div>
   <p id="dm-status" class="dm-status text-muted" role="status" aria-live="polite"></p>
+  <div class="resume-bar" id="resume-bar" role="status" hidden>
+    ${icon('clock', 16)}<span class="resume-text"></span>
+    <button type="button" class="pill-btn pill-btn-sm resume-restart">从头播放</button>
+    <button type="button" class="resume-close" aria-label="关闭提示">${icon('close', 14)}</button>
+  </div>
   <p id="player-status" class="text-muted" role="status" aria-live="polite"></p>
+  </div>
+  ${companionPanel()}
+  </div>
   <div class="row">
     <div class="col-xs-12 col-md-8">
       <div class="play-head">
@@ -511,12 +560,18 @@ function playPage(d) {
       type: d.isTv ? (d.genres.includes('真人秀') ? 'show' : 'tv') : 'movie',
       genres: d.genres, countries: d.countries, people: [...d.directors.slice(0, 1), ...d.actors.slice(0, 3)], year: d.year,
     },
+    // AI 陪看用的影片资料
+    info: {
+      originalTitle: d.originalTitle, aka: d.aka.slice(0, 3), isTv: d.isTv, genres: d.genres, countries: d.countries,
+      directors: d.directors.slice(0, 3), actors: d.actors.slice(0, 8), durations: d.durations, episodes: d.episodes,
+      pubdate: d.pubdate.slice(0, 2), rating: d.rating, intro: d.intro.slice(0, 800),
+    },
   };
   return layout({
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=6"></script><script src="/resources/danmaku.js?v=3"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=7"></script><script src="/resources/danmaku.js?v=4"></script><script src="/resources/companion.js?v=1"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 
