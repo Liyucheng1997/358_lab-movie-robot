@@ -72,7 +72,7 @@ test('电视直播页：导航有入口，静态版播放列表和数据走仓�
   assert.ok(page.includes('id="tv-video"') && page.includes('id="tv-grid"'));
   const html = staticHTML(page, '2026-11-07');
   assert.ok(html.includes(`href="${base}tv/playlist.m3u"`));
-  assert.ok(html.includes(`src="${base}resources/tv.js?v=2"`));
+  assert.ok(html.includes(`src="${base}resources/tv.js?v=3"`));
 });
 
 test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕脚本按模块加载', () => {
@@ -80,7 +80,7 @@ test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕�
   assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-btn"'));
   assert.ok(page.includes('id="tv-subs"') && page.includes('id="tv-subs-bar"') && page.includes('id="tv-sub-lang"'));
   assert.ok(page.includes('<dialog class="ai-dialog"'));
-  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=3"></script>'));
+  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=4"></script>'));
 });
 
 test('直播字幕：按地区选识别语言、中文不用翻译、长字幕只留结尾', async () => {
@@ -120,8 +120,29 @@ test('直播字幕：说完的一段话切成长度相近的几条，按阅读�
   const zh = subs.splitSentences('我们已经说过，这要归功于胜利，最后一场惊人的胜利，富人每四十分但是亚历山德罗在后面追赶得很紧');
   assert.ok(zh.length >= 2 && zh.every((x) => x.length <= 32));
   assert.equal(zh.join(''), '我们已经说过，这要归功于胜利，最后一场惊人的胜利，富人每四十分但是亚历山德罗在后面追赶得很紧');
-  // 显示时长：短句至少 1.6 秒，长句最多 6 秒，积压时放快
-  assert.equal(subs.cueDuration({ orig: 'Ciao', zh: '你好' }, 0), 1600);
-  assert.equal(subs.cueDuration({ orig: 'word '.repeat(40), zh: '' }, 0), 6000);
-  assert.ok(subs.cueDuration({ orig: 'word '.repeat(10), zh: '' }, 4) < subs.cueDuration({ orig: 'word '.repeat(10), zh: '' }, 0));
+});
+
+test('直播字幕：按分片编号把后台副本的时间对到画面上，一段话的时间按字数分给每一条', async () => {
+  const subs = await import('../public/tv-subs.js');
+  // 两个播放器的媒体时间轴起点不同，分片编号相同
+  const shadow = [{ sn: 100, start: 50, duration: 6 }, { sn: 101, start: 56, duration: 6 }];
+  const screen = [{ sn: 99, start: 0, duration: 6 }, { sn: 100, start: 6, duration: 6 }, { sn: 101, start: 12, duration: 6 }];
+  const loc = subs.locateIn(shadow, 57.5);
+  assert.deepEqual({ sn: loc.sn, off: loc.off }, { sn: 101, off: 1.5 });
+  assert.equal(subs.placeIn(screen, loc), 13.5);
+  assert.equal(subs.locateIn(shadow, 70), null);
+  assert.equal(subs.placeIn([{ sn: 1, start: 0, duration: 6 }], loc), null);
+  // 有节目时间时按节目时间对齐（不同码率的分片编号不一定一样）
+  const pdtShadow = [{ sn: 5, start: 0, duration: 4, programDateTime: 1000000 }];
+  const pdtScreen = [{ sn: 900, start: 20, duration: 4, programDateTime: 1000000 }];
+  assert.equal(subs.placeIn(pdtScreen, subs.locateIn(pdtShadow, 2)), 22);
+  // 时间按字数分配，首尾相接，每条至少 1.4 秒，最后一条多留 1.5 秒
+  const cues = subs.spread(['aaaa', 'aaaaaaaaaaaa'], 10, 18);
+  assert.equal(cues[0].start, 10);
+  assert.equal(cues[0].end, 12);
+  assert.equal(cues[1].start, 12);
+  assert.equal(cues[1].end, 18 + 1.5);
+  const short = subs.spread(['a', 'b', 'c'], 0, 1);
+  assert.ok(short.every((c) => c.end - c.start >= 1.4));
+  assert.equal(subs.DELAY, 30);
 });

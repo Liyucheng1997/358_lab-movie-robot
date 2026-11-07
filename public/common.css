@@ -803,6 +803,7 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
 }
 .tv-subs-key { gap: 5px; }
 .tv-subs-key[hidden], .tv-subs-local[hidden] { display: none; }
+.tv-shadow { position: fixed; bottom: 0; left: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
 .tv-subs-status { flex-basis: 100%; min-height: 0; margin: 0 2px; font-size: 12px; line-height: 1.6; }
 .tv-subs-status:empty { display: none; }
 .tv-line {

@@ -241,6 +241,11 @@
     generation++;
     clearTimeout(startTimer);
     if (hls) { hls.destroy(); hls = null; }
+    if (window.tvStream) {
+      // 通知字幕模块（public/tv-subs.js）线路停了
+      window.tvStream = null;
+      document.dispatchEvent(new CustomEvent('tv:stream', { detail: null }));
+    }
     video.pause();
     video.removeAttribute('src');
     video.load();
@@ -330,11 +335,15 @@
     }
     if (autoplay) startTimer = setTimeout(function () { if (video.paused || video.readyState < 3) fail(); }, START_TIMEOUT);
     if (window.Hls && Hls.isSupported()) {
-      hls = new Hls({ liveDurationInfinity: true });
+      // 缓冲放大到 90 秒：开字幕时画面要比直播晚 30 秒，暂停等待期间继续往后缓冲
+      hls = new Hls({ liveDurationInfinity: true, maxBufferLength: 90, maxMaxBufferLength: 120 });
       hls.on(Hls.Events.MANIFEST_PARSED, start);
       hls.on(Hls.Events.ERROR, function (_, data) { if (data.fatal) fail(); });
       hls.loadSource(s.u);
       hls.attachMedia(video);
+      // 字幕模块要用同一条线路在后台再开一路识别，并按分片编号把字幕对到画面上
+      window.tvStream = { url: s.u, hls: hls };
+      document.dispatchEvent(new CustomEvent('tv:stream', { detail: window.tvStream }));
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = s.u;
       video.onerror = fail;

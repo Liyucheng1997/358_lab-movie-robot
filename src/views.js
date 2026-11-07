@@ -126,7 +126,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=17">
+  <link rel="stylesheet" href="/resources/common.css?v=18">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -670,7 +670,7 @@ function tvPage() {
 ${keyDialog()}`;
   return layout({
     title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
-    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=2"></script><script type="module" src="/resources/tv-subs.js?v=3"></script>',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=3"></script><script type="module" src="/resources/tv-subs.js?v=4"></script>',
   });
 }
 
