@@ -646,6 +646,14 @@ a.ai-pick:hover, a.ai-pick:focus { color: var(--text); background: var(--panel);
   color: var(--text); font-size: 14px; line-height: 1.5; field-sizing: content;
 }
 .cmp-input::placeholder { color: var(--text-3); }
+.cmp-form .cmp-shot { width: 30px; height: 30px; margin: 0 0 1px -8px; color: var(--text-3); }
+.cmp-form .cmp-shot:hover { color: var(--primary); }
+.cmp-attach { display: flex; align-items: center; gap: 10px; margin: 0 12px 8px; padding: 6px 6px 6px 6px; border-radius: 14px; background: var(--panel-2); color: var(--text-2); font-size: 12px; }
+.cmp-attach[hidden] { display: none; }
+.cmp-attach img { width: 64px; height: 36px; flex: none; border-radius: 6px; object-fit: cover; background: #000; }
+.cmp-attach span { flex: 1; min-width: 0; }
+.cmp-attach .cmp-icon-btn { width: 26px; height: 26px; font-size: 16px; }
+.cmp-thumb { display: block; width: 180px; max-width: 80%; margin: 0 0 4px; border-radius: 12px; background: #000; aspect-ratio: 16 / 9; object-fit: cover; }
 .cmp-send {
   display: grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
   background: var(--primary); color: #fff; transition: background .15s, transform .15s;

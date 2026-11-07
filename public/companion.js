@@ -1,6 +1,7 @@
 (function () {
   // AI 陪看：和 AI 一起看片、吐槽、问细节。与 AI 选片一样，用访客自己的 API Key 在浏览器里直接调用 Claude。
-  // AI 看不到画面，只知道影片资料、当前选集和播放进度，以及此刻前后的弹幕。
+  // AI 默认只知道影片资料、当前选集和播放进度，以及此刻前后的弹幕；
+  // 暂停时提问（或点相机按钮）会把播放器当前的画面截图一起发给 Claude。
   var COMMON_URL = new URL('ai-common.js?v=1', document.currentScript.src).href;
   var CHAT_KEY = 'companion_chat_v1';
   var PREF_KEY = 'companion_prefs_v1';
@@ -8,6 +9,8 @@
   var MAX_FILMS = 12; // 本机最多保留几部影片的对话
   var MAX_SAVED = 60; // 每部影片最多保存的消息条数
   var MAX_SENT = 24; // 每次请求带上的最近消息条数
+  var MAX_IMAGES_SENT = 2; // 每次请求最多带几张截图（最近的），更早的只留文字说明
+  var SHOT_MAX = 1280; // 截图长边像素，够看清画面又不至于太费 token
 
   // ---------- 风格：语气 × 侧重点，可手动选，也可按影片类型自动 ----------
   var TONES = [['auto', '自动'], ['scholar', '博学'], ['funny', '逗趣'], ['brief', '简洁']];
@@ -42,8 +45,9 @@
     ['没看懂', '我有点没看懂刚才这段，帮我理一理'],
     ['怎么拍的', '刚才这场戏是怎么拍的？讲讲布景、镜头和剪辑'],
     ['时代背景', '讲讲这部作品的时代背景，和真实历史对得上吗？'],
+    ['看这画面', '看看现在这个画面，有什么值得注意的地方？', true],
   ];
-  var DEFAULT_PREFS = { tone: 'auto', focus: null, spoiler: true, chime: 0 };
+  var DEFAULT_PREFS = { tone: 'auto', focus: null, spoiler: true, chime: 0, shot: true };
 
   function readJSON(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
@@ -90,7 +94,8 @@
     return '你是「看片机器人」影视站的 AI 陪看伙伴，正和用户一起看下面这部作品。像坐在旁边的朋友一样聊天：一起吐槽、分享有意思的细节、解释看不懂的地方。\n\n' +
       '<film>\n' + filmBlock(record) + '\n</film>\n\n' +
       '怎么聊：\n' +
-      '- 你看不到画面。每条用户消息开头的 <watching> 给出当前选集和播放进度，请结合你对这部作品的了解推断此刻大概演到哪里。拿不准具体剧情时，不要编造具体画面、台词或镜头，可以说明“如果没记错”，或请用户描述一下画面，或改聊作品整体层面的东西。\n' +
+      '- 每条用户消息开头的 <watching> 给出当前选集和播放进度，请结合你对这部作品的了解推断此刻大概演到哪里。没有附截图时你看不到画面：拿不准具体剧情时，不要编造具体画面、台词或镜头，可以说明“如果没记错”，或请用户暂停后再问（会自动附上画面），或改聊作品整体层面的东西。\n' +
+      '- 用户有时会附上播放器当前画面的截图（<watching> 里会注明）：描述画面以截图为准，再结合你对作品的了解回答，比如这场戏在剧情里的位置、构图光影和美术布景的用意、道具服装的考据。判断画面里是哪个角色时，依据剧情进度、场景和服装来推断，并说明是推断。\n' +
       '- <style> 给出用户此刻选的语气和侧重点，按它来聊；用户的具体问题优先于侧重点。\n' +
       '- 防剧透开启时，绝不透露当前进度之后的情节、反转、人物命运和结局；用户问到后面的事，先提醒会剧透并问是否还要听。防剧透关闭时可以自由讨论。\n' +
       '- 回复像聊天：通常 2～5 句、150 字以内；用户要求详细讲解时可以长一些，但不超过 500 字。不用标题、Markdown 列表和加粗，需要分点时直接换行。\n' +
@@ -129,12 +134,18 @@
     }
     function saveChat() {
       var all = readJSON(CHAT_KEY, {});
-      all[record.id] = { time: Date.now(), msgs: chat.slice(-MAX_SAVED) };
+      // 截图只留在内存里，本机只存「附过画面」的标记，避免撑爆 localStorage
+      all[record.id] = { time: Date.now(), msgs: chat.slice(-MAX_SAVED).map(function (m) {
+        var copy = Object.assign({}, m);
+        delete copy.img;
+        delete copy.thumb;
+        return copy;
+      }) };
       var ids = Object.keys(all).sort(function (a, b) { return all[b].time - all[a].time; });
       ids.slice(MAX_FILMS).forEach(function (id) { delete all[id]; });
       writeJSON(CHAT_KEY, all);
     }
-    var chat = loadChat(); // [{ role, content, show, at, kind }]
+    var chat = loadChat(); // [{ role, content, show, at, kind, shot, img, thumb }]
 
     // ---------- 风格 ----------
     function style() {
@@ -163,9 +174,9 @@
         tag: (episode.epCount > 1 ? (episode.epTitle || '第 ' + episode.ep + ' 集') + ' ' : '') + clock(t),
       };
     }
-    function contextBlock() {
+    function contextBlock(withShot) {
       var s = style();
-      var parts = ['<watching>' + where().text + '</watching>'];
+      var parts = ['<watching>' + where().text + (withShot ? '，附上了当前画面的截图' : '') + '</watching>'];
       parts.push('<style>语气：' + TONE_PROMPTS[s.tone] + '\n侧重：' + s.focus.map(function (f) {
         var x = FOCUS.filter(function (y) { return y[0] === f; })[0];
         return x[1] + '（' + x[2] + '）';
@@ -179,9 +190,15 @@
     }
 
     // ---------- 渲染 ----------
-    function bubble(role, text, tag) {
+    function bubble(role, text, tag, thumb) {
       var item = el('div', 'cmp-msg cmp-' + role);
       if (tag) item.appendChild(el('span', 'cmp-tag', tag));
+      if (thumb) {
+        var img = el('img', 'cmp-thumb');
+        img.src = thumb;
+        img.alt = '附上的画面截图';
+        item.appendChild(img);
+      }
       var body = el('div', 'cmp-bubble', text);
       item.appendChild(body);
       log.appendChild(item);
@@ -191,12 +208,13 @@
     function renderLog() {
       log.replaceChildren();
       var hello = hasKey
-        ? '我是你的 AI 陪看搭子。看到哪不懂、想吐槽、想知道这场戏怎么拍的，随时叫我。我看不到画面，会根据进度和对这部片的了解来聊。'
+        ? '我是你的 AI 陪看搭子。看到哪不懂、想吐槽、想知道这场戏怎么拍的，随时叫我。暂停后提问我能看到当前画面；边播边聊时，我根据进度和对这部片的了解来聊。'
         : '我是你的 AI 陪看搭子，可以陪你吐槽、讲细节、解释看不懂的地方。先点右上角的钥匙设置你自己的 Claude API Key（只存在这个浏览器里）。';
       bubble('ai', hello).parentNode.classList.add('cmp-hello');
       chat.forEach(function (m) {
         if (m.kind === 'auto') return;
-        bubble(m.role === 'user' ? 'user' : 'ai', m.show || m.content, m.at);
+        var tag = m.shot && !m.thumb ? (m.at ? m.at + ' · ' : '') + '附了画面' : m.at;
+        bubble(m.role === 'user' ? 'user' : 'ai', m.show || m.content, tag, m.thumb);
       });
       scrollDown();
     }
@@ -221,17 +239,18 @@
       send.setAttribute('aria-label', controller ? '停止' : '发送');
     }
 
-    function request(kind, shown) {
+    function request(kind, shown, shot) {
       if (busy) return;
-      if (!hasKey) { openKey(function () { request(kind, shown); }); return; }
+      if (!hasKey) { openKey(function () { request(kind, shown, shot); }); return; }
       var at = where().tag;
-      var content = contextBlock() + '\n\n' + (kind === 'auto'
+      var content = contextBlock(!!shot) + '\n\n' + (kind === 'auto'
         ? '（用户没有说话。请根据当前进度像朋友一样主动搭一句：一个有意思的细节、一句吐槽或一个值得留意的地方，1～2 句、60 字以内；不要重复之前说过的内容。）'
         : shown);
       var userMsg = { role: 'user', content: content, show: shown, at: at, kind: kind };
+      if (shot) { userMsg.shot = true; userMsg.img = shot.data; userMsg.thumb = shot.url; }
       chat.push(userMsg);
       saveChat();
-      if (kind !== 'auto') { bubble('user', shown, at); scrollDown(); }
+      if (kind !== 'auto') { bubble('user', shown, at, shot && shot.url); scrollDown(); }
       var target = bubble('ai', '');
       target.parentNode.classList.add('is-typing');
       scrollDown();
@@ -242,7 +261,17 @@
       // 最近若干条消息；必须以用户消息开头
       var msgs = chat.slice(-MAX_SENT);
       while (msgs.length && msgs[0].role !== 'user') msgs.shift();
-      var messages = msgs.map(function (m) { return { role: m.role, content: m.content }; });
+      // 只带最近几张截图，更早的换成文字说明
+      var withImg = msgs.filter(function (m) { return m.img; }).slice(-MAX_IMAGES_SENT);
+      var messages = msgs.map(function (m) {
+        if (withImg.indexOf(m) >= 0) {
+          return { role: m.role, content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: m.img } },
+            { type: 'text', text: m.content },
+          ] };
+        }
+        return { role: m.role, content: m.shot ? m.content + '\n（这条消息当时附了一张画面截图，已省略）' : m.content };
+      });
 
       loadCommon().then(function (c) {
         return c.createClient().then(function (sdk) {
@@ -308,7 +337,60 @@
       loadCommon().then(function (c) { c.openKeyDialog(then); });
     }
 
-    // ---------- 输入 ----------
+    // ---------- 截取当前画面 ----------
+    // 只画视频本身（不含弹幕层）。hls.js 播放时视频来自同源 blob，可以截图；
+    // 源站不允许跨域的视频（如 iPhone 原生播放第三方地址）会被浏览器禁止读取画面。
+    function captureFrame() {
+      if (!episode || !video.videoWidth || video.readyState < 2) throw new Error('画面还没加载出来，先播放一下再截图。');
+      var scale = Math.min(1, SHOT_MAX / Math.max(video.videoWidth, video.videoHeight));
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      var url;
+      try { url = canvas.toDataURL('image/jpeg', 0.82); } catch (e) {
+        throw new Error('这条线路的视频不允许截图（源站跨域限制），换一条线路再试。');
+      }
+      return { url: url, data: url.slice(url.indexOf(',') + 1), at: where().tag };
+    }
+    function showError(text) {
+      bubble('ai', text).parentNode.classList.add('cmp-error');
+      scrollDown();
+    }
+
+    // 相机按钮：手动附上当前画面，发送下一条消息时一起带上
+    var attach = null;
+    var attachBox = el('div', 'cmp-attach');
+    attachBox.hidden = true;
+    form.parentNode.insertBefore(attachBox, form);
+    function setAttach(shot) {
+      attach = shot;
+      attachBox.replaceChildren();
+      attachBox.hidden = !shot;
+      if (!shot) return;
+      var img = el('img');
+      img.src = shot.url;
+      img.alt = '';
+      var remove = el('button', 'cmp-icon-btn', '×');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', '不附这张画面');
+      remove.addEventListener('click', function () { setAttach(null); });
+      attachBox.append(img, el('span', null, '已附上 ' + (shot.at || '当前') + ' 的画面'), remove);
+    }
+    $('.cmp-shot').addEventListener('click', function () {
+      try { setAttach(captureFrame()); input.focus({ preventScroll: true }); } catch (err) { showError(err.message); }
+    });
+
+    // 发送时：有手动附的画面就带上；没有的话，暂停状态下自动截当前画面
+    function shotFor(force) {
+      if (attach) { var a = attach; setAttach(null); return a; }
+      var paused = video.paused && video.currentTime > 0 && episode && episode.kind === 'episode';
+      if (!force && !(prefs.shot && paused)) return null;
+      try { return captureFrame(); } catch (err) {
+        if (force) throw err;
+        return null; // 自动截图失败就只发文字
+      }
+    }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (busy) { busy.abort(); return; }
@@ -316,7 +398,7 @@
       if (!text) { input.focus(); return; }
       input.value = '';
       lastTyped = Date.now();
-      request('user', text);
+      request('user', text, shotFor(false));
     });
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
@@ -328,7 +410,12 @@
       var btn = el('button', null, q[0]);
       btn.type = 'button';
       btn.title = q[1];
-      btn.addEventListener('click', function () { request('user', q[1]); });
+      btn.addEventListener('click', function () {
+        if (busy) return;
+        var shot;
+        try { shot = shotFor(!!q[2]); } catch (err) { showError(err.message); return; }
+        request('user', q[1], shot);
+      });
       li.appendChild(btn);
       quick.appendChild(li);
     });
@@ -409,6 +496,14 @@
       spoil.append(box2, document.createTextNode('不剧透当前进度之后的内容'));
       settingsBox.appendChild(rowOf('防剧透', spoil));
 
+      var shotLabel = el('label', 'dm-check');
+      var shotBox = el('input');
+      shotBox.type = 'checkbox';
+      shotBox.checked = prefs.shot;
+      shotBox.addEventListener('change', function () { prefs.shot = shotBox.checked; savePrefs(); });
+      shotLabel.append(shotBox, document.createTextNode('暂停时提问，自动附上当前画面'));
+      settingsBox.appendChild(rowOf('画面', shotLabel, '截图会发给 Anthropic API，每张约 1～2 千 token。播放中也可以点输入框左边的相机按钮手动附上。'));
+
       settingsBox.appendChild(rowOf('主动搭话', seg(CHIMES, prefs.chime, function (v) { prefs.chime = Number(v); played = 0; savePrefs(); }),
         prefs.chime ? '每实际播放 ' + prefs.chime + ' 分钟，AI 会主动说一句（每次都会调用一次 API）。' : '开启后 AI 会按播放时长不时主动聊一句。'));
 
@@ -418,7 +513,7 @@
       clear.addEventListener('click', function () {
         if (!chat.length || confirm('清空和 AI 关于这部片的对话吗？')) { chat = []; saveChat(); renderLog(); }
       });
-      actions.append(clear, el('span', 'cmp-hint', 'AI 看不到画面，根据进度、影片资料和此刻的弹幕来聊；费用计入你自己的 API Key。'));
+      actions.append(clear, el('span', 'cmp-hint', 'AI 根据进度、影片资料、此刻的弹幕和你附上的画面来聊；费用计入你自己的 API Key。'));
       settingsBox.appendChild(actions);
     }
     gear.addEventListener('click', function () {

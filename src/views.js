@@ -32,6 +32,7 @@ const ICONS = {
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
+  camera: '<path d="M14.5 4h-5L7.5 6.5H4a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
@@ -109,7 +110,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=10">
+  <link rel="stylesheet" href="/resources/common.css?v=11">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -420,6 +421,7 @@ function companionPanel() {
     <div class="cmp-log" role="log" aria-live="polite"></div>
     <ul class="cmp-quick"></ul>
     <form class="cmp-form" autocomplete="off">
+      <button type="button" class="cmp-icon-btn cmp-shot" title="附上当前画面" aria-label="附上当前画面">${icon('camera', 17)}</button>
       <textarea class="cmp-input" rows="1" maxlength="400" enterkeyhint="send" placeholder="问点什么，或者一起吐槽…" aria-label="和 AI 聊这部片"></textarea>
       <button type="submit" class="cmp-send" aria-label="发送">${icon('send', 16)}</button>
     </form>
@@ -571,7 +573,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=7"></script><script src="/resources/danmaku.js?v=4"></script><script src="/resources/companion.js?v=1"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=7"></script><script src="/resources/danmaku.js?v=4"></script><script src="/resources/companion.js?v=2"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 
