@@ -11,6 +11,34 @@ const TRANSLATE_MODEL = 'claude-haiku-5-5'; // 字幕要快，用小模型
 export const DELAY = 30; // 开字幕时画面比直播晚多少秒（识别 + 翻译都在这段时间里做完）
 const FORCE_FINAL_MS = 10000; // 一口气说太久一直不定稿时强制定稿，保证在 DELAY 之内出字幕
 const FORCE_FINAL_CHARS = 160;
+const STYLE_KEY = 'tv_sub_style';
+
+// 字幕样式：每一项的可选值，第一个是默认值
+export const STYLE_OPTIONS = {
+  size: [['m', '中', 1], ['s', '小', 0.82], ['l', '大', 1.25], ['xl', '特大', 1.55]],
+  zh: [['#ffffff', '白'], ['#ffd84d', '黄'], ['#7fe3ff', '青'], ['#9cf0a0', '绿'], ['#ffb3c7', '粉']],
+  orig: [['rgba(255,255,255,.86)', '浅白'], ['#ffffff', '白'], ['#c8c8c8', '灰'], ['#ffd84d', '黄'], ['#7fe3ff', '青']],
+  bg: [['box', '半透明底'], ['solid', '黑底'], ['none', '无底描边']],
+  font: [['sans', '黑体'], ['serif', '宋体'], ['kai', '楷体']],
+  weight: [['normal', '常规'], ['bold', '加粗']],
+  pos: [['low', '靠下'], ['high', '稍高']],
+  order: [['zh', '中文在上'], ['orig', '原文在上']],
+};
+const FONTS = {
+  sans: 'inherit',
+  serif: '"Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif',
+  kai: '"Kaiti SC", "STKaiti", "KaiTi", "BiauKai", serif',
+};
+
+// 读到的样式只保留认识的值，缺的补默认值
+export function normalizeStyle(raw) {
+  const out = {};
+  Object.keys(STYLE_OPTIONS).forEach((key) => {
+    const values = STYLE_OPTIONS[key].map((o) => o[0]);
+    out[key] = raw && values.includes(raw[key]) ? raw[key] : values[0];
+  });
+  return out;
+}
 
 export const LANGS = [
   ['en-US', '英语（美国）'], ['en-GB', '英语（英国）'], ['zh-CN', '普通话'], ['zh-TW', '国语（台湾）'], ['yue-Hant-HK', '粤语'],
@@ -172,6 +200,8 @@ function init() {
   const origLine = box.querySelector('.tv-sub-orig');
   const keyBtn = bar.querySelector('.tv-subs-key');
   const localBtn = bar.querySelector('.tv-subs-local');
+  const styleBtn = bar.querySelector('.tv-subs-style-btn');
+  const stylePanel = document.getElementById('tv-subs-style');
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   let mode = 'off';
@@ -203,6 +233,8 @@ function init() {
     const t = video.currentTime;
     let cue = null;
     for (const c of cues) if (c.start <= t && t < c.end) cue = c;
+    // 改样式时没有字幕也放一条示例，方便看效果
+    if (!cue && !stylePanel.hidden) cue = SAMPLE;
     if (mode === 'off' || (!cue && !notice)) { box.hidden = true; shown = null; return; }
     if (!cue) {
       if (shown === notice) return;
@@ -211,9 +243,10 @@ function init() {
       zhLine.hidden = true;
       origLine.hidden = false;
       origLine.textContent = notice;
-      box.classList.add('is-single');
+      box.classList.add('is-single', 'is-notice');
       return;
     }
+    box.classList.remove('is-notice');
     const key = cue.orig + '|' + cue.zh + '|' + mode;
     if (shown === key) return;
     shown = key;
@@ -229,6 +262,81 @@ function init() {
     origLine.hidden = !showOrig;
     box.classList.toggle('is-single', !(showZh && showOrig));
   }
+  const SAMPLE = { orig: 'This is how the subtitles will look.', zh: '字幕会是这个样子。' };
+
+  // ---------- 字幕样式 ----------
+  let style = normalizeStyle(null);
+  try { style = normalizeStyle(JSON.parse(localStorage.getItem(STYLE_KEY))); } catch (e) {}
+  function applyStyle() {
+    const pick = (key) => STYLE_OPTIONS[key].find((o) => o[0] === style[key]);
+    box.style.setProperty('--sub-scale', pick('size')[2]);
+    box.style.setProperty('--sub-zh', style.zh);
+    box.style.setProperty('--sub-orig', style.orig);
+    box.style.setProperty('--sub-font', FONTS[style.font]);
+    box.classList.toggle('sub-bg-solid', style.bg === 'solid');
+    box.classList.toggle('sub-bg-none', style.bg === 'none');
+    box.classList.toggle('sub-bold', style.weight === 'bold');
+    box.classList.toggle('sub-high', style.pos === 'high');
+    box.classList.toggle('orig-first', style.order === 'orig');
+  }
+  const STYLE_ROWS = [
+    ['size', '字号'], ['zh', '中文颜色'], ['orig', '原文颜色'], ['bg', '背景'],
+    ['font', '字体'], ['weight', '粗细'], ['pos', '位置'], ['order', '双语顺序'],
+  ];
+  function buildStylePanel() {
+    stylePanel.replaceChildren();
+    STYLE_ROWS.forEach(([key, label]) => {
+      const name = document.createElement('span');
+      name.className = 'tv-style-label';
+      name.textContent = label;
+      const opts = document.createElement('div');
+      opts.className = 'tv-style-opts';
+      opts.setAttribute('role', 'group');
+      opts.setAttribute('aria-label', label);
+      STYLE_OPTIONS[key].forEach(([value, text]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.key = key;
+        b.dataset.value = value;
+        // 颜色用色块，其余用文字
+        if (key === 'zh' || key === 'orig') {
+          b.className = 'tv-swatch';
+          b.style.background = value;
+          b.title = text;
+          b.setAttribute('aria-label', text);
+        } else b.textContent = text;
+        b.setAttribute('aria-pressed', String(style[key] === value));
+        opts.appendChild(b);
+      });
+      stylePanel.append(name, opts);
+    });
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'tv-style-reset';
+    reset.textContent = '恢复默认样式';
+    stylePanel.appendChild(reset);
+  }
+  stylePanel.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.classList.contains('tv-style-reset')) style = normalizeStyle(null);
+    else style[b.dataset.key] = b.dataset.value;
+    try { localStorage.setItem(STYLE_KEY, JSON.stringify(style)); } catch (err) {}
+    stylePanel.querySelectorAll('[data-key]').forEach((x) => x.setAttribute('aria-pressed', String(style[x.dataset.key] === x.dataset.value)));
+    applyStyle();
+    shown = null;
+    render();
+  });
+  styleBtn.addEventListener('click', () => {
+    const open = stylePanel.hidden;
+    if (open && !stylePanel.firstChild) buildStylePanel();
+    stylePanel.hidden = !open;
+    styleBtn.setAttribute('aria-expanded', String(open));
+    shown = null;
+    render();
+  });
+  applyStyle();
+
   function addCues(list) {
     list.forEach((c) => {
       // 前一条最多显示到这一条开始

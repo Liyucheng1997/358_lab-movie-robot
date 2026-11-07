@@ -33,6 +33,7 @@ const ICONS = {
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   broadcast: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  palette: '<path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.6-4-8.2-9-8.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/>',
   subtitles: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 14h4M13 14h5M6 10h8M17 10h1"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
@@ -126,7 +127,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=18">
+  <link rel="stylesheet" href="/resources/common.css?v=19">
 </head>
 <body>
 ${topbar(active, isIndex)}
@@ -643,6 +644,8 @@ function tvPage() {
       <label class="tv-subs-lang">识别语言<select id="tv-sub-lang"></select></label>
       <button type="button" class="pill-btn pill-btn-sm tv-subs-key" hidden>${icon('key', 14)}用 Claude 翻译</button>
       <button type="button" class="pill-btn pill-btn-sm tv-subs-local" hidden>下载本机识别模型</button>
+      <button type="button" class="pill-btn pill-btn-sm tv-subs-style-btn" aria-expanded="false" aria-controls="tv-subs-style">${icon('palette', 14)}样式</button>
+      <div class="tv-subs-style" id="tv-subs-style" hidden></div>
       <p class="tv-subs-status text-muted" role="status" aria-live="polite"></p>
     </div>
     <p class="tv-status text-muted" id="tv-status" role="status" aria-live="polite"></p>
@@ -670,7 +673,7 @@ function tvPage() {
 ${keyDialog()}`;
   return layout({
     title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
-    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=3"></script><script type="module" src="/resources/tv-subs.js?v=4"></script>',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=3"></script><script type="module" src="/resources/tv-subs.js?v=5"></script>',
   });
 }
 

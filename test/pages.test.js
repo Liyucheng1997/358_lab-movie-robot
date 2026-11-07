@@ -80,7 +80,26 @@ test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕�
   assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-btn"'));
   assert.ok(page.includes('id="tv-subs"') && page.includes('id="tv-subs-bar"') && page.includes('id="tv-sub-lang"'));
   assert.ok(page.includes('<dialog class="ai-dialog"'));
-  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=4"></script>'));
+  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=5"></script>'));
+  assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-style-btn"') && page.includes('id="tv-subs-style"'));
+});
+
+test('直播字幕样式：只保留认识的值，缺的和乱填的补默认值', async () => {
+  const subs = await import('../public/tv-subs.js');
+  const defaults = subs.normalizeStyle(null);
+  assert.deepEqual(defaults, { size: 'm', zh: '#ffffff', orig: 'rgba(255,255,255,.86)', bg: 'box', font: 'sans', weight: 'normal', pos: 'low', order: 'zh' });
+  const picked = subs.normalizeStyle({ size: 'xl', zh: '#ffd84d', bg: 'none', font: 'comic', pos: 'high', order: 'orig', extra: 1 });
+  assert.equal(picked.size, 'xl');
+  assert.equal(picked.zh, '#ffd84d');
+  assert.equal(picked.bg, 'none');
+  assert.equal(picked.font, 'sans');
+  assert.equal(picked.order, 'orig');
+  assert.ok(!('extra' in picked));
+  // 每一项都有中文名，颜色值不重复
+  Object.values(subs.STYLE_OPTIONS).forEach((opts) => {
+    assert.ok(opts.every((o) => o[1]));
+    assert.equal(new Set(opts.map((o) => o[0])).size, opts.length);
+  });
 });
 
 test('直播字幕：按地区选识别语言、中文不用翻译、长字幕只留结尾', async () => {
