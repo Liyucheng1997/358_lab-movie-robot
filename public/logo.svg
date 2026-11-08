@@ -1,12 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <line x1="32" y1="6" x2="32" y2="15" stroke="#1d1d1f" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="32" cy="6" r="4" fill="#0071e3"/>
-  <rect x="7" y="15" width="50" height="40" rx="9" fill="#fff" stroke="#1d1d1f" stroke-width="3"/>
-  <rect x="2" y="28" width="5" height="14" rx="2" fill="#1d1d1f"/>
-  <rect x="57" y="28" width="5" height="14" rx="2" fill="#1d1d1f"/>
-  <circle cx="22" cy="32" r="8" fill="#fff" stroke="#1d1d1f" stroke-width="3"/>
-  <circle cx="42" cy="32" r="8" fill="#fff" stroke="#1d1d1f" stroke-width="3"/>
-  <circle cx="22" cy="32" r="3.5" fill="#0071e3"/>
-  <circle cx="42" cy="32" r="3.5" fill="#0071e3"/>
-  <rect x="22" y="45" width="20" height="4" rx="2" fill="#1d1d1f"/>
+  <!-- 片刻：对话气泡（AI 陪看）里放一个播放键（看片） -->
+  <path d="M18 5h28a14 14 0 0 1 14 14v18a14 14 0 0 1-14 14H25l-11.5 9.2c-1.3 1-3.2.1-3.2-1.6V50.2A14 14 0 0 1 4 37V19A14 14 0 0 1 18 5z" fill="#0071e3"/>
+  <path d="M26.5 18.6v18.8c0 1.6 1.7 2.5 3 1.7l14.6-9.4a2 2 0 0 0 0-3.4l-14.6-9.4c-1.3-.8-3 .1-3 1.7z" fill="#fff"/>
+  <circle cx="49" cy="15" r="3" fill="#fff" opacity=".9"/>
 </svg>

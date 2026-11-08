@@ -1,6 +1,6 @@
 // 服务端渲染模板（结构与类名对照原站：Bootstrap 3 栅格 + v-list / result-info / line-res）
 const douban = require('./douban');
-const SITE_NAME = process.env.SITE_NAME || '看片机器人';
+const SITE_NAME = process.env.SITE_NAME || '片刻';
 
 const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3C/svg%3E";
 
@@ -65,18 +65,20 @@ const NAV = [
   ['history', '/history.html', 'clock', '播放历史', '看过'],
 ];
 
-// 顶栏：Logo + 导航 + 搜索 + 深浅色切换；首页的搜索放在大标题下面
+// 顶栏：通栏、贴顶。左侧 Logo + 导航，右侧搜索 + 深浅色切换；首页的搜索放在大标题下面
 function topbar(active, isIndex) {
   const links = NAV.map(
     ([key, href, , text]) => `<a href="${href}"${active === key ? ' class="active" aria-current="page"' : ''}>${text}</a>`
   ).join('');
   return `
 <header class="topbar${isIndex ? ' topbar-index' : ''}">
-  <div class="container topbar-inner">
-    <a class="brand" href="/" title="回到首页"><img src="/resources/logo.svg" width="30" height="30" alt=""><span>${esc(SITE_NAME)}</span></a>
+  <div class="topbar-inner">
+    <a class="brand" href="/" title="回到首页"><img src="/resources/logo.svg" width="28" height="28" alt=""><span>${esc(SITE_NAME)}</span></a>
     <nav class="topnav" aria-label="主导航">${links}</nav>
-    ${isIndex ? '<div class="topbar-spacer"></div>' : searchForm(false)}
-    <button type="button" class="round-btn theme-toggle" aria-label="切换深色模式" title="切换深色模式">${icon('moon', 17)}${icon('sun', 17)}</button>
+    <div class="topbar-end">
+      ${isIndex ? '' : searchForm(false)}
+      <button type="button" class="round-btn theme-toggle" aria-label="切换深色模式" title="切换深色模式">${icon('moon', 17)}${icon('sun', 17)}</button>
+    </div>
   </div>
 </header>`;
 }
@@ -127,7 +129,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/resources/common.css?v=19">
+  <link rel="stylesheet" href="/resources/common.css?v=20">
 </head>
 <body>
 ${topbar(active, isIndex)}

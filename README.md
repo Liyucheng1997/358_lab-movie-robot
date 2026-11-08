@@ -1,4 +1,4 @@
-# 看片机器人（仿 ikanbot 布局）
+# 片刻 · AI 陪你看片（仿 ikanbot 布局）
 
 零依赖的 Node.js 影视聚合站，页面结构、URL 规则与 ikanbot 一致，数据实时取自豆瓣公开接口。
 
@@ -32,7 +32,7 @@ npm start            # 或 node server.js，默认 http://localhost:3000
 npm run dev          # 修改代码后自动重启
 ```
 
-环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「看片机器人」）。需要 Node 18+。
+环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）。需要 Node 18+。
 
 ## 页面
 
