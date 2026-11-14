@@ -4,6 +4,7 @@
   var PROBE_TIMEOUT = 10000;
   var PROBE_CONCURRENCY = 6;
   var SLOW_MS = 2500;
+  var SEEK_STEP = 30; // 方向键快进快退的秒数
 
   function firstUri(text) {
     var lines = text.split(/\r?\n/);
@@ -202,6 +203,34 @@
     video.addEventListener('pause', function () { saveProgress(true); });
     video.addEventListener('ended', function () { saveProgress(true); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) saveProgress(true); });
+
+    // ---------- 快进快退 ----------
+    // 原生控件按方向键一次跳的幅度由浏览器决定（长片会跳一分多钟），统一改成每次 30 秒
+    function seekBy(delta) {
+      if (video.readyState < 1) return;
+      var end = isFinite(video.duration) ? video.duration : Infinity;
+      video.currentTime = Math.max(0, Math.min(end - 0.5, video.currentTime + delta));
+    }
+    window.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (e.ctrlKey || e.altKey || e.metaKey || e.defaultPrevented) return;
+      var t = e.target;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      // 焦点在播放器上、页面空白处，或者播放器所在区域全屏时才接管方向键
+      var full = document.fullscreenElement;
+      if (t !== video && t !== document.body && t !== document.documentElement && !(full && full.contains(video))) return;
+      if (video.readyState < 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      seekBy(e.key === 'ArrowLeft' ? -SEEK_STEP : SEEK_STEP);
+    }, true);
+    // 耳机、锁屏、系统媒体控件上的快进快退
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.setActionHandler('seekbackward', function (d) { seekBy(-(d && d.seekOffset || SEEK_STEP)); });
+        navigator.mediaSession.setActionHandler('seekforward', function (d) { seekBy(d && d.seekOffset || SEEK_STEP); });
+      } catch (e) {}
+    }
 
     // ---------- 续播 ----------
     function hideResume() { if (resumeBar) resumeBar.hidden = true; }
