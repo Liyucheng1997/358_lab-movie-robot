@@ -8,6 +8,7 @@ const sources = require('./src/sources');
 const recommend = require('./src/recommend');
 const danmaku = require('./src/danmaku');
 const tv = require('./src/tv');
+const guard = require('./src/guard');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -183,6 +184,21 @@ async function route(req, res) {
     pathname = decodeURIComponent(url.pathname);
   } catch {
     return send(res, 400, views.errorPage(400, '地址格式不正确'));
+  }
+
+  if (pathname === '/robots.txt') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' });
+    return res.end(guard.ROBOTS_TXT);
+  }
+  // 不守 robots.txt 的 AI 爬虫直接拒绝；单个 IP 请求太快（爬虫或页面卡在刷新循环）先让它歇一会
+  if (guard.isBlockedBot(req.headers['user-agent'])) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Crawling is not allowed. See /robots.txt');
+  }
+  if (!guard.allowRequest(clientIP(req), pathname)) {
+    res.setHeader('Retry-After', '60');
+    if (pathname.startsWith('/api/')) return json(res, 429, { error: '请求太频繁，请稍后再试', items: [], lines: [] });
+    return send(res, 429, views.errorPage(429, '访问太频繁了，请歇一分钟再刷新。'));
   }
 
   if (pathname === '/' || pathname === '/index.html') return home(res);

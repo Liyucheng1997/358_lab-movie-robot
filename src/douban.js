@@ -5,16 +5,44 @@ const UA =
 
 const cache = new Map();
 
+// 同一个 key 正在加载时复用同一个请求，避免并发访问同一页时重复问豆瓣
+const pending = new Map();
+
 async function cached(key, ttlMs, loader) {
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.value;
-  const value = await loader();
-  cache.set(key, { value, expires: Date.now() + ttlMs });
-  if (cache.size > 2000) cache.delete(cache.keys().next().value);
-  return value;
+  if (pending.has(key)) return pending.get(key);
+  const p = (async () => {
+    try {
+      const value = await loader();
+      cache.set(key, { value, expires: Date.now() + ttlMs });
+      if (cache.size > 2000) cache.delete(cache.keys().next().value);
+      return value;
+    } finally {
+      pending.delete(key);
+    }
+  })();
+  pending.set(key, p);
+  return p;
+}
+
+// 全站每分钟最多向豆瓣发这么多请求，超出就先拒绝，宁可少数页面暂时打不开，也不让服务器 IP 被豆瓣封掉
+const OUTBOUND_PER_MIN = Number(process.env.DOUBAN_PER_MIN) || 120;
+const outbound = [];
+
+function takeOutbound(now = Date.now()) {
+  while (outbound.length && now - outbound[0] >= 60 * 1000) outbound.shift();
+  if (outbound.length >= OUTBOUND_PER_MIN) return false;
+  outbound.push(now);
+  return true;
 }
 
 async function getJSON(url, referer = 'https://movie.douban.com/') {
+  if (!takeOutbound()) {
+    const err = new Error('豆瓣请求过于频繁，稍后再试');
+    err.status = 429;
+    throw err;
+  }
   const res = await fetch(url, {
     headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json' },
     signal: AbortSignal.timeout(15000),
@@ -209,4 +237,4 @@ function bigCover(url) {
   return (url || '').replace('/s_ratio_poster/', '/m_ratio_poster/');
 }
 
-module.exports = { MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, related, search, UA };
+module.exports = { takeOutbound, MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, related, search, UA };
