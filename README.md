@@ -32,7 +32,7 @@ npm start            # 或 node server.js，默认 http://localhost:3000
 npm run dev          # 修改代码后自动重启
 ```
 
-环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）。需要 Node 18+。
+环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）、`DOUBAN_PROXY`（访问豆瓣用的 HTTP 代理，如 Cloudflare WARP 代理模式的 `http://127.0.0.1:40000`；服务器 IP 被豆瓣封时用，需要 Node 22.21+）、`DOUBAN_PER_MIN`（每分钟最多向豆瓣发的请求数，默认 120）。需要 Node 18+。
 
 ## 页面
 

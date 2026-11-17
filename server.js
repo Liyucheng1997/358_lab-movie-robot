@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { Readable } = require('stream');
+const doubanNet = require('./src/upstream');
 const douban = require('./src/douban');
 const views = require('./src/views');
 const sources = require('./src/sources');
@@ -44,18 +44,16 @@ async function proxy(req, res, raw, kind) {
   if (!upstream) return send(res, 400, 'bad url');
   const headers = { 'User-Agent': douban.UA, Referer: 'https://movie.douban.com/' };
   if (kind === 'video' && req.headers.range) headers.Range = req.headers.range;
-  const r = await fetch(upstream, { headers, signal: AbortSignal.timeout(kind === 'video' ? 60000 : 15000) });
-  const out = { 'Content-Type': r.headers.get('content-type') || 'application/octet-stream' };
+  const r = await doubanNet.request(upstream, { headers, timeoutMs: 10000 });
+  const out = { 'Content-Type': r.headers['content-type'] || 'application/octet-stream' };
   for (const h of ['content-length', 'content-range', 'accept-ranges', 'last-modified', 'etag']) {
-    if (r.headers.get(h)) out[h] = r.headers.get(h);
+    if (r.headers[h]) out[h] = r.headers[h];
   }
-  out['Cache-Control'] = kind === 'img' ? 'public, max-age=604800' : 'no-store';
-  res.writeHead(r.status, out);
-  if (!r.body) return res.end();
-  const stream = Readable.fromWeb(r.body);
-  stream.on('error', () => res.destroy());
-  res.on('close', () => stream.destroy());
-  stream.pipe(res);
+  out['Cache-Control'] = kind === 'img' && r.statusCode === 200 ? 'public, max-age=604800' : 'no-store';
+  res.writeHead(r.statusCode, out);
+  r.on('error', () => res.destroy());
+  res.on('close', () => r.destroy());
+  r.pipe(res);
 }
 
 function serveStatic(res, rel) {

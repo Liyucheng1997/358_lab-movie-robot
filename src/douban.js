@@ -1,5 +1,6 @@
 // 豆瓣公开接口封装 + 内存缓存
 const { vendorIds } = require('./danmaku');
+const upstream = require('./upstream');
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
@@ -15,9 +16,14 @@ async function cached(key, ttlMs, loader) {
   const p = (async () => {
     try {
       const value = await loader();
+      cache.delete(key);
       cache.set(key, { value, expires: Date.now() + ttlMs });
       if (cache.size > 2000) cache.delete(cache.keys().next().value);
       return value;
+    } catch (e) {
+      // 豆瓣暂时连不上时，过期的缓存总比空页面好
+      if (hit && !e.notFound) return hit.value;
+      throw e;
     } finally {
       pending.delete(key);
     }
@@ -37,22 +43,42 @@ function takeOutbound(now = Date.now()) {
   return true;
 }
 
+// 熔断：连不上豆瓣（超时、连接被拒）后的一小段时间里直接失败，不让每个页面都卡在 10 秒超时上
+const BREAKER_MS = 30 * 1000;
+let downUntil = 0;
+
+function breakerOpen(now = Date.now()) {
+  return now < downUntil;
+}
+
 async function getJSON(url, referer = 'https://movie.douban.com/') {
+  if (breakerOpen()) {
+    const err = new Error('豆瓣暂时连不上，稍后再试');
+    err.status = 503;
+    throw err;
+  }
   if (!takeOutbound()) {
     const err = new Error('豆瓣请求过于频繁，稍后再试');
     err.status = 429;
     throw err;
   }
-  const res = await fetch(url, {
-    headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) {
-    const err = new Error(`豆瓣接口返回 ${res.status}: ${url}`);
-    err.status = res.status;
+  let res;
+  try {
+    res = await upstream.request(url, {
+      headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json' },
+      timeoutMs: 10000,
+    });
+  } catch (e) {
+    downUntil = Date.now() + BREAKER_MS;
+    throw e;
+  }
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    res.resume();
+    const err = new Error(`豆瓣接口返回 ${res.statusCode}: ${url}`);
+    err.status = res.statusCode;
     throw err;
   }
-  return res.json();
+  return upstream.readJSON(res);
 }
 
 const MIN = 60 * 1000;
@@ -237,4 +263,4 @@ function bigCover(url) {
   return (url || '').replace('/s_ratio_poster/', '/m_ratio_poster/');
 }
 
-module.exports = { takeOutbound, MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, related, search, UA };
+module.exports = { takeOutbound, breakerOpen, MOVIE_TAGS, TV_TAGS, PAGE_SIZE, SEARCH_PAGE_SIZE, BILLBOARDS, hotList, collection, detail, related, search, UA };
