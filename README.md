@@ -4,6 +4,18 @@
 
 [在线访问](https://movie.liyucheng.me) · [版本发布](https://github.com/Liyucheng1997/358_lab-movie-robot/releases)
 
+## 登录（私人站点）
+
+整站要登录才能用：没登录打开任何页面都跳到 `/login`，接口返回 401，`/img`、`/video` 代理和电视直播地址同样要登录。账号存在 `DATA_DIR/users.json`（默认 `data/users.json`，已在 .gitignore），密码只存 scrypt 哈希，登录凭证是签名 Cookie（签名密钥自动生成在 `data/auth-secret`），有效 180 天。
+
+```bash
+node scripts/user.js add 用户名      # 添加账号，或给已有账号改密码（交互输入，至少 8 位）
+node scripts/user.js remove 用户名   # 删除账号，他已登录的设备立即退出
+node scripts/user.js list           # 列出账号
+```
+
+服务器上在 `/opt/apps/movie` 里以 `ubuntu` 用户运行，改完不用重启。同一 IP 15 分钟内最多试 10 次密码。本地开发不想登录可以设 `AUTH=off`。
+
 ## 服务器实时版
 
 [movie.liyucheng.me](https://movie.liyucheng.me) 运行 Node.js 实时版，不使用快照，搜索和线路直接查询上游。
@@ -32,7 +44,7 @@ npm start            # 或 node server.js，默认 http://localhost:3000
 npm run dev          # 修改代码后自动重启
 ```
 
-环境变量：`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）、`DOUBAN_PROXY`（访问豆瓣用的 HTTP 代理，如 Cloudflare WARP 代理模式的 `http://127.0.0.1:40000`；服务器 IP 被豆瓣封时用，需要 Node 22.21+）、`DOUBAN_PER_MIN`（每分钟最多向豆瓣发的请求数，默认 120）。需要 Node 18+。
+环境变量：`AUTH`（设为 `off` 关闭登录，仅限本地开发）、`DATA_DIR`（账号、弹幕、电视直播数据目录，默认 `data/`）、`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）、`DOUBAN_PROXY`（访问豆瓣用的 HTTP 代理，如 Cloudflare WARP 代理模式的 `http://127.0.0.1:40000`；服务器 IP 被豆瓣封时用，需要 Node 22.21+）、`DOUBAN_PER_MIN`（每分钟最多向豆瓣发的请求数，默认 120）。需要 Node 18+。
 
 ## 页面
 

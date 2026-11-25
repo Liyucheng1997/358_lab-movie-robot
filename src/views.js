@@ -41,6 +41,7 @@ const ICONS = {
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+  logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 const icon = (name, size = 18) =>
@@ -78,6 +79,7 @@ function topbar(active, isIndex) {
     <div class="topbar-end">
       ${isIndex ? '' : searchForm(false)}
       <button type="button" class="round-btn theme-toggle" aria-label="切换深色模式" title="切换深色模式">${icon('moon', 17)}${icon('sun', 17)}</button>
+      <a class="round-btn logout-btn" href="/logout" aria-label="退出登录" title="退出登录">${icon('logout', 17)}</a>
     </div>
   </div>
 </header>`;
@@ -704,4 +706,45 @@ function errorPage(status, message) {
   return layout({ title: status === 404 ? '页面不存在' : '出错了', body });
 }
 
-module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, tvPage, errorPage, hotUrl };
+// 登录页：私人站点，不显示导航，只有一个登录框
+function loginPage({ next = '/', error = '', name = '' } = {}) {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>登录-${esc(SITE_NAME)}</title>
+  <link rel="icon" href="/resources/logo.svg">
+  ${THEME_SCRIPT}
+  <link rel="stylesheet" href="/resources/common.css?v=20">
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; margin: 0; }
+    .login-card { width: 100%; max-width: 360px; padding: 36px 28px 28px; text-align: center; }
+    .login-card img { width: 56px; height: 56px; margin-bottom: 14px; }
+    .login-card h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+    .login-card .sub { color: var(--text-3); font-size: 14px; margin: 0 0 22px; }
+    .login-card, .login-card * { box-sizing: border-box; }
+    .login-card input { display: block; width: 100%; height: 44px; margin-bottom: 12px; padding: 0 16px; font-size: 16px;
+      border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel-2); color: inherit; outline: none; }
+    .login-card input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-ring); }
+    .login-card button { width: 100%; height: 44px; margin-top: 6px; border: 0; font-size: 16px; }
+    .login-err { color: var(--danger); font-size: 14px; margin: -4px 0 12px; }
+  </style>
+</head>
+<body>
+  <form class="card login-card" method="post" action="/login">
+    <img src="/resources/logo.svg" alt="">
+    <h1>${esc(SITE_NAME)}</h1>
+    <p class="sub">私人影院，请先登录</p>
+    <input type="hidden" name="next" value="${esc(next)}">
+    <input name="name" value="${esc(name)}" placeholder="账号" autocomplete="username" autocapitalize="off" required${name ? '' : ' autofocus'}>
+    <input name="password" type="password" placeholder="密码" autocomplete="current-password" required${name ? ' autofocus' : ''}>
+    ${error ? `<p class="login-err" role="alert">${esc(error)}</p>` : ''}
+    <button type="submit" class="pill-btn pill-btn-primary">登录</button>
+  </form>
+</body>
+</html>`;
+}
+
+module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, tvPage, errorPage, loginPage, hotUrl };

@@ -9,6 +9,7 @@ const recommend = require('./src/recommend');
 const danmaku = require('./src/danmaku');
 const tv = require('./src/tv');
 const guard = require('./src/guard');
+const auth = require('./src/auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -175,6 +176,30 @@ async function danmakuAPI(req, res, id, url) {
   }
 }
 
+// 登录：每个 IP 15 分钟内最多试 10 次密码
+const loginLimit = guard.limiter({ windowMs: 15 * guard.MIN, max: 10 });
+async function loginRoute(req, res, url) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'POST') {
+    if (auth.enabled() && auth.currentUser(req)) {
+      res.writeHead(302, { Location: auth.safeNext(url.searchParams.get('next')) });
+      return res.end();
+    }
+    return send(res, 200, views.loginPage({ next: auth.safeNext(url.searchParams.get('next')) }));
+  }
+  let form;
+  try { form = new URLSearchParams(await readBody(req)); } catch (e) { return send(res, e.status || 400, '格式不正确'); }
+  const next = auth.safeNext(form.get('next'));
+  const name = (form.get('name') || '').trim().slice(0, 40);
+  if (!loginLimit(clientIP(req))) {
+    return send(res, 429, views.loginPage({ next, name, error: '尝试次数太多，请 15 分钟后再试' }));
+  }
+  const token = auth.login(name, form.get('password') || '');
+  if (!token) return send(res, 401, views.loginPage({ next, name, error: '账号或密码不对' }));
+  res.writeHead(303, { 'Set-Cookie': auth.sessionCookie(req, token), Location: next });
+  res.end();
+}
+
 async function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   let pathname;
@@ -192,6 +217,20 @@ async function route(req, res) {
   if (guard.isBlockedBot(req.headers['user-agent'])) {
     res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Crawling is not allowed. See /robots.txt');
+  }
+  // 私人站点：除登录页外都要先登录
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  if (pathname === '/login') return loginRoute(req, res, url);
+  if (pathname === '/logout') {
+    res.writeHead(302, { 'Set-Cookie': auth.sessionCookie(req, ''), Location: '/login', 'Cache-Control': 'no-store' });
+    return res.end();
+  }
+  if (auth.enabled() && !auth.isPublicPath(pathname) && !auth.currentUser(req)) {
+    res.setHeader('Cache-Control', 'no-store');
+    if (pathname.startsWith('/api/')) return json(res, 401, { error: '请先登录', items: [], lines: [] });
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 401, '请先登录');
+    res.writeHead(302, { Location: '/login?next=' + encodeURIComponent(url.pathname + url.search) });
+    return res.end();
   }
   if (!guard.allowRequest(clientIP(req), pathname)) {
     res.setHeader('Retry-After', '60');

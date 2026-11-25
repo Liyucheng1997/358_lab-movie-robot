@@ -2,10 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const guard = require('../src/guard');
 
-test('robots.txt 整站禁止 AI 爬虫，搜索引擎不爬播放页和接口', () => {
-  assert.match(guard.ROBOTS_TXT, /User-agent: GPTBot\nDisallow: \/\n/);
-  assert.match(guard.ROBOTS_TXT, /User-agent: \*\nDisallow: \/play\//);
-  assert.ok(guard.ROBOTS_TXT.includes('Disallow: /api/'));
+test('robots.txt 整站禁止所有爬虫', () => {
+  assert.equal(guard.ROBOTS_TXT, 'User-agent: *\nDisallow: /\n');
 });
 
 test('按 UA 拦截 AI 爬虫，不误伤普通浏览器和谷歌搜索', () => {

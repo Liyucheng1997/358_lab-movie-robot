@@ -10,19 +10,8 @@ const AI_BOTS = [
   'Reflectionbot', 'PetalBot', 'YouBot', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot', 'DataForSeoBot',
 ];
 
-// 搜索引擎：可以收录首页、榜单等页面，但不爬播放页、搜索和接口（这些都要实时问豆瓣）
-const ROBOTS_TXT = [
-  ...AI_BOTS.map((bot) => `User-agent: ${bot}\nDisallow: /\n`),
-  'User-agent: *',
-  'Disallow: /play/',
-  'Disallow: /search',
-  'Disallow: /api/',
-  'Disallow: /img',
-  'Disallow: /video',
-  'Disallow: /tv/',
-  'Crawl-delay: 10',
-  '',
-].join('\n');
+// 私人站点（要登录才能用），所有爬虫和搜索引擎都不收录
+const ROBOTS_TXT = 'User-agent: *\nDisallow: /\n';
 
 // 带 UA 的爬虫不守 robots.txt 时直接拒绝
 const BOT_RE = new RegExp(AI_BOTS.map((b) => b.replace(/[-]/g, '\\-')).join('|'), 'i');
