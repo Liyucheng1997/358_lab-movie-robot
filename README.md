@@ -14,7 +14,27 @@ node scripts/user.js remove 用户名   # 删除账号，他已登录的设备�
 node scripts/user.js list           # 列出账号
 ```
 
-服务器上在 `/opt/apps/movie` 里以 `ubuntu` 用户运行，改完不用重启。同一 IP 15 分钟内最多试 10 次密码。本地开发不想登录可以设 `AUTH=off`。
+服务器上在 `/opt/apps/movie` 里以 `ubuntu` 用户运行，改完不用重启。同一 IP 15 分钟内最多试 10 次密码（登录和注册合计）。本地开发不想登录可以设 `AUTH=off`。
+
+### 邀请码
+
+没有账号的人只能凭邀请码在 `/register` 自己注册（设账号和密码）。邀请码存在 `DATA_DIR/invites.json`，每个码可以限定使用次数和有效天数，并记录是谁用它注册的。
+
+管理员登录后打开 `/admin`：生成 / 作废邀请码，查看账号是用哪个邀请码注册的、最近 24 小时打开了多少部影片、用过多少个 IP，删除账号。非管理员打开 `/admin` 看到的是 404。
+
+```bash
+node scripts/user.js admin 用户名            # 设为管理员；unadmin 取消
+node scripts/invite.js new 备注 次数 天数     # 生成邀请码（默认 1 次、30 天，天数 0 = 不过期）
+node scripts/invite.js new 站长 1 7 --admin  # 用这个码注册的人直接是管理员（第一次建站长账号用）
+node scripts/invite.js list                 # 列出邀请码和注册的账号
+node scripts/invite.js revoke 邀请码         # 作废
+```
+
+### 防抓取
+
+- 没登录拿不到任何页面、接口、脚本和图片；`robots.txt` 禁止所有爬虫，响应带 `X-Robots-Tag: noindex`。
+- 登录后按账号限流（换 IP 也一样）：播放页、搜索、播放源等每分钟 60 次；每个账号 24 小时内最多打开 150 部不同的影片（`PLAY_PER_DAY` 可调），超过返回 429 并在管理页标红。
+- 登录后的响应都是 `Cache-Control: private`，不会被 CDN 缓存后发给没登录的人；`Referrer-Policy: same-origin`，外站看不到来源页面地址。
 
 ## 服务器实时版
 
@@ -44,7 +64,7 @@ npm start            # 或 node server.js，默认 http://localhost:3000
 npm run dev          # 修改代码后自动重启
 ```
 
-环境变量：`AUTH`（设为 `off` 关闭登录，仅限本地开发）、`DATA_DIR`（账号、弹幕、电视直播数据目录，默认 `data/`）、`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）、`DOUBAN_PROXY`（访问豆瓣用的 HTTP 代理，如 Cloudflare WARP 代理模式的 `http://127.0.0.1:40000`；服务器 IP 被豆瓣封时用，需要 Node 22.21+）、`DOUBAN_PER_MIN`（每分钟最多向豆瓣发的请求数，默认 120）。需要 Node 18+。
+环境变量：`PLAY_PER_DAY`（每个账号 24 小时内最多打开的影片数，默认 150）、`AUTH`（设为 `off` 关闭登录，仅限本地开发）、`DATA_DIR`（账号、弹幕、电视直播数据目录，默认 `data/`）、`PORT`（端口）、`HOST`（监听地址，默认所有网卡）、`SITE_NAME`（站点名称，默认「片刻」）、`DOUBAN_PROXY`（访问豆瓣用的 HTTP 代理，如 Cloudflare WARP 代理模式的 `http://127.0.0.1:40000`；服务器 IP 被豆瓣封时用，需要 Node 22.21+）、`DOUBAN_PER_MIN`（每分钟最多向豆瓣发的请求数，默认 120）。需要 Node 18+。
 
 ## 页面
 

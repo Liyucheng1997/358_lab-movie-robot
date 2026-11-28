@@ -47,4 +47,51 @@ function allowRequest(ip, pathname, now) {
   return perIP(ip, now);
 }
 
-module.exports = { MIN, ROBOTS_TXT, AI_BOTS, isBlockedBot, limiter, allowRequest, DOUBAN_ROUTES };
+// ── 按账号防爬 ──
+// 登录后爬虫换 IP 也没用：同一个账号一分钟内的豆瓣类请求同样限 60 次，
+// 另外每个账号 24 小时内最多打开 PLAY_PER_DAY 部不同的影片（正常人一天看不了这么多，批量抓取会很快撞上）
+const perUser = limiter({ windowMs: MIN, max: 60 });
+const DAY = 24 * 60 * MIN;
+const PLAY_PER_DAY = Number(process.env.PLAY_PER_DAY) || 150;
+const PLAY_ROUTE = /^\/(?:play|api\/sources|api\/rec\/related|api\/danmaku)\/(\d+)$/;
+const activity = new Map(); // 账号 → { plays: Map(影片 id → 时间), ips: Map(IP → 时间), blocked: 次数 }
+
+function userActivity(name, now) {
+  let a = activity.get(name);
+  if (!a) activity.set(name, (a = { plays: new Map(), ips: new Map(), blocked: 0, last: now }));
+  for (const m of [a.plays, a.ips]) for (const [k, at] of m) if (now - at >= DAY) m.delete(k);
+  return a;
+}
+
+// 返回 '' 放行；否则是拒绝原因：'rate'（太快）或 'quota'（今天打开的影片太多）
+function checkUser(name, ip, pathname, now = Date.now(), maxPlays = PLAY_PER_DAY) {
+  const a = userActivity(name, now);
+  a.last = now;
+  if (ip) a.ips.set(ip, now);
+  if (DOUBAN_ROUTES.test(pathname) && !perUser('u:' + name, now)) {
+    a.blocked++;
+    return 'rate';
+  }
+  const id = pathname.match(PLAY_ROUTE)?.[1];
+  if (id && !a.plays.has(id)) {
+    if (a.plays.size >= maxPlays) {
+      if (!a.blocked++) console.warn(`账号 ${name} 24 小时内打开了 ${a.plays.size} 部影片，已限制（疑似批量抓取）`);
+      return 'quota';
+    }
+    a.plays.set(id, now);
+  }
+  return '';
+}
+
+// 给管理页看：每个账号最近 24 小时打开了多少部影片、用过多少个 IP、被拦了多少次
+function usage(now = Date.now()) {
+  const out = {};
+  for (const name of activity.keys()) {
+    const a = userActivity(name, now);
+    out[name] = { plays: a.plays.size, ips: a.ips.size, blocked: a.blocked, last: a.last };
+  }
+  return out;
+}
+
+module.exports = {
+  checkUser, usage, PLAY_PER_DAY, MIN, ROBOTS_TXT, AI_BOTS, isBlockedBot, limiter, allowRequest, DOUBAN_ROUTES };

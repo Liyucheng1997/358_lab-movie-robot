@@ -7,7 +7,9 @@ const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const USERS_FILE = process.env.AUTH_USERS_FILE || path.join(DATA_DIR, 'users.json');
+const ADMINS_FILE = process.env.AUTH_ADMINS_FILE || path.join(DATA_DIR, 'admins.json');
 const SECRET_FILE = path.join(DATA_DIR, 'auth-secret');
+const NAME_RE = /^[\w.@-]{2,40}$/;
 const COOKIE = 'pk_session';
 const SESSION_DAYS = 180;
 const KEYLEN = 32;
@@ -46,6 +48,45 @@ function saveUsers(users, file = USERS_FILE) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(users, null, 2) + '\n', { mode: 0o600 });
   fs.renameSync(tmp, file);
+}
+
+// 管理员（能在 /admin 发邀请码、删账号）：DATA_DIR/admins.json 里的用户名数组，用 scripts/user.js admin 设置
+function loadAdmins(file = ADMINS_FILE) {
+  try {
+    const list = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(list) ? list.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAdmins(list, file = ADMINS_FILE) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify([...new Set(list)], null, 2) + '\n', { mode: 0o600 });
+}
+
+const isAdmin = (name) => !!name && loadAdmins().includes(name);
+
+// 凭邀请码注册。成功返回 { token }，失败返回 { error }
+function register(name, password, code, invites = require('./invites')) {
+  const n = String(name || '').trim();
+  const why = invites.check(code);
+  if (why) return { error: why };
+  if (!NAME_RE.test(n)) return { error: '账号只能用字母、数字和 _ . @ -，2 到 40 位' };
+  if (String(password || '').length < 8) return { error: '密码至少 8 位' };
+  const users = { ...loadUsers() };
+  const taken = Object.keys(users).some((u) => u.toLowerCase() === n.toLowerCase());
+  if (taken) return { error: '这个账号名已经有人用了，换一个' };
+  let invite;
+  try {
+    invite = invites.redeem(code, n);
+  } catch (e) {
+    return { error: e.message };
+  }
+  users[n] = hashPassword(password);
+  saveUsers(users);
+  if (invite.admin) saveAdmins([...loadAdmins(), n]);
+  return { token: makeToken(n, users) };
 }
 
 let secret;
@@ -129,11 +170,12 @@ function safeNext(next) {
   return /^\/(?![\/\\])/.test(s) ? s : '/';
 }
 
-// 不用登录就能访问的地址：登录页本身、它用到的样式和图标、robots.txt
-const PUBLIC_PATHS = new Set(['/login', '/logout', '/robots.txt', '/favicon.ico', '/resources/common.css', '/resources/logo.svg']);
+// 不用登录就能访问的地址：登录页和注册页、它用到的样式和图标、robots.txt
+const PUBLIC_PATHS = new Set(['/login', '/register', '/logout', '/robots.txt', '/favicon.ico', '/resources/common.css', '/resources/logo.svg']);
 const isPublicPath = (pathname) => PUBLIC_PATHS.has(pathname);
 
 module.exports = {
   COOKIE, USERS_FILE, enabled, hashPassword, verifyPassword, loadUsers, saveUsers,
   makeToken, checkToken, parseCookies, currentUser, sessionCookie, login, safeNext, isPublicPath,
+  NAME_RE, loadAdmins, saveAdmins, isAdmin, register,
 };

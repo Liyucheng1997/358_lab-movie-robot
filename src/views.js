@@ -706,15 +706,16 @@ function errorPage(status, message) {
   return layout({ title: status === 404 ? '页面不存在' : '出错了', body });
 }
 
-// 登录页：私人站点，不显示导航，只有一个登录框
-function loginPage({ next = '/', error = '', name = '' } = {}) {
+// 登录页和注册页：私人站点，不显示导航，也不说明网站是做什么的
+function authPage({ title, action, sub, fields, error, button, foot }) {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="robots" content="noindex, nofollow">
-  <title>登录-${esc(SITE_NAME)}</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="same-origin">
+  <title>${esc(title)}-${esc(SITE_NAME)}</title>
   <link rel="icon" href="/resources/logo.svg">
   ${THEME_SCRIPT}
   <link rel="stylesheet" href="/resources/common.css?v=20">
@@ -730,21 +731,126 @@ function loginPage({ next = '/', error = '', name = '' } = {}) {
     .login-card input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-ring); }
     .login-card button { width: 100%; height: 44px; margin-top: 6px; border: 0; font-size: 16px; }
     .login-err { color: var(--danger); font-size: 14px; margin: -4px 0 12px; }
+    .login-foot { color: var(--text-3); font-size: 14px; margin: 18px 0 0; }
+    .login-foot a { color: var(--primary); }
   </style>
 </head>
 <body>
-  <form class="card login-card" method="post" action="/login">
+  <form class="card login-card" method="post" action="${action}">
     <img src="/resources/logo.svg" alt="">
     <h1>${esc(SITE_NAME)}</h1>
-    <p class="sub">私人影院，请先登录</p>
-    <input type="hidden" name="next" value="${esc(next)}">
-    <input name="name" value="${esc(name)}" placeholder="账号" autocomplete="username" autocapitalize="off" required${name ? '' : ' autofocus'}>
-    <input name="password" type="password" placeholder="密码" autocomplete="current-password" required${name ? ' autofocus' : ''}>
+    <p class="sub">${esc(sub)}</p>
+    ${fields}
     ${error ? `<p class="login-err" role="alert">${esc(error)}</p>` : ''}
-    <button type="submit" class="pill-btn pill-btn-primary">登录</button>
+    <button type="submit" class="pill-btn pill-btn-primary">${esc(button)}</button>
+    <p class="login-foot">${foot}</p>
   </form>
 </body>
 </html>`;
 }
 
-module.exports = { homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, tvPage, errorPage, loginPage, hotUrl };
+function loginPage({ next = '/', error = '', name = '' } = {}) {
+  return authPage({
+    title: '登录', action: '/login', sub: '仅限受邀用户，请先登录', error, button: '登录',
+    fields: `<input type="hidden" name="next" value="${esc(next)}">
+    <input name="name" value="${esc(name)}" placeholder="账号" autocomplete="username" autocapitalize="off" required${name ? '' : ' autofocus'}>
+    <input name="password" type="password" placeholder="密码" autocomplete="current-password" required${name ? ' autofocus' : ''}>`,
+    foot: '有邀请码？<a href="/register">注册账号</a>',
+  });
+}
+
+function registerPage({ error = '', name = '', code = '' } = {}) {
+  return authPage({
+    title: '注册', action: '/register', sub: '凭邀请码注册账号', error, button: '注册',
+    fields: `<input name="code" value="${esc(code)}" placeholder="邀请码" autocomplete="off" autocapitalize="characters" spellcheck="false" required${code ? '' : ' autofocus'}>
+    <input name="name" value="${esc(name)}" placeholder="账号（字母、数字，2 位以上）" autocomplete="username" autocapitalize="off" minlength="2" maxlength="40" required>
+    <input name="password" type="password" placeholder="密码（至少 8 位）" autocomplete="new-password" minlength="8" required>
+    <input name="password2" type="password" placeholder="再输一次密码" autocomplete="new-password" minlength="8" required>`,
+    foot: '已有账号？<a href="/login">登录</a>',
+  });
+}
+
+// 管理页：发邀请码、看谁注册了、每个账号最近的用量，删账号
+const fmtTime = (at) => (at ? new Date(at + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '');
+
+function adminPage({ me, users, admins, invites, usage, playLimit, notice = '', error = '' }) {
+  const invitedBy = {};
+  for (const inv of invites) for (const u of inv.uses) invitedBy[u.name] = { code: inv.code, note: inv.note, at: u.at };
+  const post = (action, field, value, label, confirmText) =>
+    `<form method="post" action="${action}" style="display:inline"${confirmText ? ` data-confirm="${esc(confirmText)}"` : ''}><input type="hidden" name="${field}" value="${esc(value)}"><button type="submit" class="pill-btn pill-btn-sm">${label}</button></form>`;
+  const inviteRows = invites.map((inv) => `
+        <tr${inv.problem ? ' class="admin-off"' : ''}>
+          <td><code class="admin-code">${esc(inv.code)}</code></td>
+          <td>${esc(inv.note)}</td>
+          <td class="tabular">${inv.uses.length} / ${inv.max}</td>
+          <td>${inv.uses.map((u) => esc(u.name)).join('、')}</td>
+          <td class="tabular">${inv.expiresAt ? fmtTime(inv.expiresAt).slice(0, 10) : '不过期'}</td>
+          <td>${inv.problem ? esc(inv.problem.replace('邀请码', '')) : post('/admin/invite/revoke', 'code', inv.code, '作废')}</td>
+        </tr>`).join('');
+  const userRows = users.map((name) => {
+    const u = usage[name] || {};
+    const from = invitedBy[name];
+    const heavy = (u.plays || 0) >= playLimit || u.blocked;
+    return `
+        <tr>
+          <td>${esc(name)}${admins.includes(name) ? ' <span class="admin-tag">管理员</span>' : ''}</td>
+          <td>${from ? `${esc(from.note || from.code)} · ${fmtTime(from.at).slice(0, 10)}` : '手动添加'}</td>
+          <td class="tabular${heavy ? ' admin-warn' : ''}">${u.plays || 0}${u.blocked ? `（被拦 ${u.blocked} 次）` : ''}</td>
+          <td class="tabular">${u.ips || 0}</td>
+          <td class="tabular">${fmtTime(u.last)}</td>
+          <td>${name === me ? '' : post('/admin/user/remove', 'name', name, '删除', `删除账号 ${name}？他已登录的设备会立即退出。`)}</td>
+        </tr>`;
+  }).join('');
+  const body = `
+<div class="container main admin">
+  <style>
+    .admin .card { padding: 20px 22px; margin-bottom: 18px; }
+    .admin h2 { font-size: 18px; font-weight: 600; margin: 0 0 14px; }
+    .admin table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .admin th, .admin td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .admin th { color: var(--text-3); font-weight: 500; white-space: nowrap; }
+    .admin-scroll { overflow-x: auto; }
+    .admin-code { font-size: 15px; letter-spacing: .04em; background: none; color: inherit; padding: 0; user-select: all; }
+    .admin-off { color: var(--text-3); }
+    .admin-warn { color: var(--danger); font-weight: 600; }
+    .admin-tag { font-size: 12px; color: var(--primary); }
+    .admin-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .admin-form input { height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel-2); color: inherit; font-size: 14px; }
+    .admin-form label { font-size: 14px; color: var(--text-3); display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+    .admin-note { padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; background: var(--fill); }
+    .admin-note.err { background: var(--danger-bg); color: var(--danger); }
+    .admin .hint { color: var(--text-3); font-size: 13px; margin: 12px 0 0; }
+  </style>
+  <h1 class="page-title">管理</h1>
+  ${notice ? `<div class="admin-note" role="status">${notice}</div>` : ''}
+  ${error ? `<div class="admin-note err" role="alert">${esc(error)}</div>` : ''}
+  <div class="card">
+    <h2>邀请码</h2>
+    <form class="admin-form" method="post" action="/admin/invite">
+      <input name="note" placeholder="备注（给谁的）" maxlength="60">
+      <label>可用 <input name="max" type="number" min="1" max="100" value="1" style="width:70px"> 次</label>
+      <label>有效 <input name="days" type="number" min="0" max="3650" value="30" style="width:80px"> 天</label>
+      <button type="submit" class="pill-btn pill-btn-primary pill-btn-sm">生成邀请码</button>
+    </form>
+    <div class="admin-scroll"><table>
+      <thead><tr><th>邀请码</th><th>备注</th><th>已用</th><th>注册的账号</th><th>到期</th><th></th></tr></thead>
+      <tbody>${inviteRows || '<tr><td colspan="6" class="admin-off">还没有邀请码</td></tr>'}</tbody>
+    </table></div>
+    <p class="hint">把邀请码发给对方，对方打开 <code>/register</code> 填邀请码、自己设账号密码。有效天数填 0 表示不过期。</p>
+  </div>
+  <div class="card">
+    <h2>账号（${users.length}）</h2>
+    <div class="admin-scroll"><table>
+      <thead><tr><th>账号</th><th>来源</th><th>24 小时打开影片</th><th>用过的 IP</th><th>最近访问</th><th></th></tr></thead>
+      <tbody>${userRows}</tbody>
+    </table></div>
+    <p class="hint">每个账号 24 小时内最多打开 ${playLimit} 部不同的影片，超过会被拦下并标红；用过的 IP 很多说明账号可能被转借。用量统计在服务重启后清零。</p>
+  </div>
+</div>`;
+  const scripts = `<script>document.addEventListener('submit',function(e){var m=e.target.getAttribute('data-confirm');if(m&&!confirm(m))e.preventDefault()});</script>`;
+  return layout({ title: '管理', body, scripts });
+}
+
+module.exports = {
+  homePage, hotPage, billboardPage, searchPage, playPage, forYouPage, historyPage, tvPage, errorPage, loginPage, registerPage, adminPage, hotUrl,
+};

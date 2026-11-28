@@ -10,6 +10,7 @@ const danmaku = require('./src/danmaku');
 const tv = require('./src/tv');
 const guard = require('./src/guard');
 const auth = require('./src/auth');
+const invites = require('./src/invites');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -50,7 +51,7 @@ async function proxy(req, res, raw, kind) {
   for (const h of ['content-length', 'content-range', 'accept-ranges', 'last-modified', 'etag']) {
     if (r.headers[h]) out[h] = r.headers[h];
   }
-  out['Cache-Control'] = kind === 'img' && r.statusCode === 200 ? 'public, max-age=604800' : 'no-store';
+  out['Cache-Control'] = kind === 'img' && r.statusCode === 200 ? 'private, max-age=604800' : 'no-store';
   res.writeHead(r.statusCode, out);
   r.on('error', () => res.destroy());
   res.on('close', () => r.destroy());
@@ -64,7 +65,7 @@ function serveStatic(res, rel) {
     if (err) return send(res, 404, views.errorPage(404, '资源不存在'));
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'private, max-age=3600',
     });
     res.end(buf);
   });
@@ -76,7 +77,7 @@ function serveTV(req, res, rel) {
   const file = path.join(TV_DIR, rel);
   const gzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
   const headers = {
-    'Content-Type': TV_FILES[ext], 'Cache-Control': 'public, max-age=600', 'Access-Control-Allow-Origin': '*', Vary: 'Accept-Encoding',
+    'Content-Type': TV_FILES[ext], 'Cache-Control': 'private, max-age=600', Vary: 'Accept-Encoding',
   };
   const sendFile = (f, extra) => fs.readFile(f, (err, buf) => {
     if (err) {
@@ -168,7 +169,7 @@ async function danmakuAPI(req, res, id, url) {
   }
   try {
     const detail = await douban.detail(id);
-    return json(res, 200, await danmaku.segment(detail.danmaku || {}, id, ep, seg), 'public, max-age=60');
+    return json(res, 200, await danmaku.segment(detail.danmaku || {}, id, ep, seg), 'private, max-age=60');
   } catch (e) {
     if (e.notFound) return json(res, 404, { error: e.message, items: [] });
     console.error('弹幕加载失败:', e.message);
@@ -200,6 +201,69 @@ async function loginRoute(req, res, url) {
   res.end();
 }
 
+// 注册：凭邀请码自己设账号密码。和登录共用试错次数，防止猜邀请码
+async function registerRoute(req, res, url) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'POST') {
+    if (auth.currentUser(req)) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
+    }
+    return send(res, 200, views.registerPage({ code: (url.searchParams.get('code') || '').slice(0, 20) }));
+  }
+  let form;
+  try { form = new URLSearchParams(await readBody(req)); } catch (e) { return send(res, e.status || 400, '格式不正确'); }
+  const name = (form.get('name') || '').trim().slice(0, 40);
+  const code = (form.get('code') || '').trim().slice(0, 20);
+  const fail = (status, error) => send(res, status, views.registerPage({ name, code, error }));
+  if (!loginLimit(clientIP(req))) return fail(429, '尝试次数太多，请 15 分钟后再试');
+  if ((form.get('password') || '') !== (form.get('password2') || '')) return fail(400, '两次输入的密码不一致');
+  const result = auth.register(name, form.get('password') || '', code);
+  if (result.error) return fail(400, result.error);
+  console.log(`新账号 ${name} 用邀请码 ${invites.normalize(code)} 注册`);
+  res.writeHead(303, { 'Set-Cookie': auth.sessionCookie(req, result.token), Location: '/' });
+  res.end();
+}
+
+// 表单只接受本站页面提交的
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try { return new URL(origin).host === (req.headers['x-forwarded-host'] || req.headers.host); } catch { return false; }
+}
+
+// 管理页：只有管理员能看，别人看到的是 404
+async function adminRoute(req, res, pathname, user) {
+  res.setHeader('Cache-Control', 'no-store');
+  const page = (extra = {}) => send(res, extra.error ? 400 : 200, views.adminPage({
+    me: user, users: Object.keys(auth.loadUsers()), admins: auth.loadAdmins(), invites: invites.list(),
+    usage: guard.usage(), playLimit: guard.PLAY_PER_DAY, ...extra,
+  }));
+  if (req.method !== 'POST') return pathname === '/admin' ? page() : send(res, 404, views.errorPage(404, '你访问的页面不存在'));
+  if (!sameOrigin(req)) return send(res, 403, 'forbidden');
+  let form;
+  try { form = new URLSearchParams(await readBody(req)); } catch (e) { return send(res, e.status || 400, '格式不正确'); }
+  if (pathname === '/admin/invite') {
+    const code = invites.create({ note: form.get('note') || '', max: form.get('max'), days: form.get('days'), by: user });
+    return page({ notice: `新邀请码：<code class="admin-code">${code}</code>` });
+  }
+  if (pathname === '/admin/invite/revoke') {
+    return invites.revoke(form.get('code')) ? page({ notice: '邀请码已作废' }) : page({ error: '没有这个邀请码' });
+  }
+  if (pathname === '/admin/user/remove') {
+    const name = form.get('name') || '';
+    const users = { ...auth.loadUsers() };
+    if (name === user) return page({ error: '不能删除自己' });
+    if (!Object.prototype.hasOwnProperty.call(users, name)) return page({ error: '没有这个账号' });
+    delete users[name];
+    auth.saveUsers(users);
+    auth.saveAdmins(auth.loadAdmins().filter((n) => n !== name));
+    console.log(`管理员 ${user} 删除了账号 ${name}`);
+    return page({ notice: '账号已删除' });
+  }
+  return send(res, 404, views.errorPage(404, '你访问的页面不存在'));
+}
+
 async function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   let pathname;
@@ -221,21 +285,32 @@ async function route(req, res) {
   // 私人站点：除登录页外都要先登录
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   if (pathname === '/login') return loginRoute(req, res, url);
+  if (pathname === '/register') return registerRoute(req, res, url);
   if (pathname === '/logout') {
     res.writeHead(302, { 'Set-Cookie': auth.sessionCookie(req, ''), Location: '/login', 'Cache-Control': 'no-store' });
     return res.end();
   }
-  if (auth.enabled() && !auth.isPublicPath(pathname) && !auth.currentUser(req)) {
+  const user = auth.enabled() ? auth.currentUser(req) : null;
+  if (auth.enabled() && !auth.isPublicPath(pathname) && !user) {
     res.setHeader('Cache-Control', 'no-store');
     if (pathname.startsWith('/api/')) return json(res, 401, { error: '请先登录', items: [], lines: [] });
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 401, '请先登录');
     res.writeHead(302, { Location: '/login?next=' + encodeURIComponent(url.pathname + url.search) });
     return res.end();
   }
-  if (!guard.allowRequest(clientIP(req), pathname)) {
-    res.setHeader('Retry-After', '60');
-    if (pathname.startsWith('/api/')) return json(res, 429, { error: '请求太频繁，请稍后再试', items: [], lines: [] });
-    return send(res, 429, views.errorPage(429, '访问太频繁了，请歇一分钟再刷新。'));
+  // 登录后的页面不把地址带给外站（播放源、图片站看不到是从哪个站来的）
+  res.setHeader('Referrer-Policy', 'same-origin');
+  // 限流：按 IP，登录后再按账号（换 IP 也躲不掉），外加每个账号每天能打开的影片数
+  const blocked = !guard.allowRequest(clientIP(req), pathname) ? 'rate' : user ? guard.checkUser(user, clientIP(req), pathname) : '';
+  if (blocked) {
+    res.setHeader('Retry-After', blocked === 'quota' ? '3600' : '60');
+    const message = blocked === 'quota' ? '今天打开的影片太多了，明天再来。' : '访问太频繁了，请歇一分钟再刷新。';
+    if (pathname.startsWith('/api/')) return json(res, 429, { error: message, message, items: [], lines: [] });
+    return send(res, 429, views.errorPage(429, message));
+  }
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (!auth.isAdmin(user)) return send(res, 404, views.errorPage(404, '你访问的页面不存在'));
+    return adminRoute(req, res, pathname, user);
   }
 
   if (pathname === '/' || pathname === '/index.html') return home(res);
@@ -255,7 +330,7 @@ async function route(req, res) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     try {
       const items = await recommend.livePool();
-      res.setHeader('Cache-Control', 'public, max-age=600');
+      res.setHeader('Cache-Control', 'private, max-age=600');
       return res.end(JSON.stringify({ items }));
     } catch (e) {
       console.error('推荐候选池加载失败:', e.message);
@@ -268,7 +343,7 @@ async function route(req, res) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     try {
       const items = await recommend.liveRelated(relatedMatch[1]);
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
       return res.end(JSON.stringify({ items }));
     } catch (e) {
       console.error('相关推荐加载失败:', e.message);

@@ -3,6 +3,7 @@
 //   node scripts/user.js add 用户名      添加账号，或给已有账号改密码（交互输入密码）
 //   node scripts/user.js remove 用户名   删除账号（他已登录的设备立即退出）
 //   node scripts/user.js list           列出账号
+//   node scripts/user.js admin 用户名    设为管理员（能打开 /admin 发邀请码、删账号）；unadmin 取消
 const readline = require('readline');
 const auth = require('../src/auth');
 
@@ -25,19 +26,29 @@ async function main() {
   const users = auth.loadUsers();
   if (cmd === 'list') {
     const names = Object.keys(users);
-    console.log(names.length ? names.join('\n') : '（还没有账号）');
+    const admins = auth.loadAdmins();
+    console.log(names.length ? names.map((n) => (admins.includes(n) ? n + '  [管理员]' : n)).join('\n') : '（还没有账号）');
     return;
   }
-  if (!name || !['add', 'remove'].includes(cmd)) {
-    console.log('用法: node scripts/user.js add|remove 用户名  /  node scripts/user.js list');
+  if (!name || !['add', 'remove', 'admin', 'unadmin'].includes(cmd)) {
+    console.log('用法: node scripts/user.js add|remove|admin|unadmin 用户名  /  node scripts/user.js list');
     process.exitCode = 1;
     return;
   }
   if (!/^[\w.@-]{1,40}$/.test(name)) throw new Error('用户名只能用字母、数字和 _ . @ -，最长 40 位');
+  if (cmd === 'admin' || cmd === 'unadmin') {
+    if (!users[name]) throw new Error(`没有账号 ${name}`);
+    const admins = auth.loadAdmins().filter((n) => n !== name);
+    if (cmd === 'admin') admins.push(name);
+    auth.saveAdmins(admins);
+    console.log(cmd === 'admin' ? `${name} 已是管理员` : `已取消 ${name} 的管理员`);
+    return;
+  }
   if (cmd === 'remove') {
     if (!users[name]) throw new Error(`没有账号 ${name}`);
     delete users[name];
     auth.saveUsers(users);
+    auth.saveAdmins(auth.loadAdmins().filter((n) => n !== name));
     console.log(`已删除 ${name}`);
     return;
   }
