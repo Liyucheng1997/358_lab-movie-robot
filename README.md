@@ -30,6 +30,18 @@ node scripts/invite.js list                 # 列出邀请码和注册的账号
 node scripts/invite.js revoke 邀请码         # 作废
 ```
 
+### 本站自带 AI
+
+服务器上配置了 Claude API Key 后，登录的用户不用填自己的 Key 就能用 AI 选片、AI 陪看和字幕翻译：浏览器把请求发到本站 `/api/ai/v1/messages`（格式同 Anthropic Messages API，支持流式），服务器带上 Key 转发，Key 不会发给浏览器。没配置时和以前一样，各人填自己的 Key。
+
+```bash
+node scripts/ai-key.js          # 设置 Key（输入不回显，存到 data/anthropic-key，马上生效）
+node scripts/ai-key.js status   # 看有没有配置
+node scripts/ai-key.js remove   # 删除
+```
+
+费用计入这个 Key 的账号。每个账号每天最多 60 次 AI 选片 / 陪看、1500 次字幕翻译，全站每天 1500 / 20000 次，可用 `AI_PER_DAY`、`AI_GLOBAL_PER_DAY`、`AI_TRANSLATE_PER_DAY`、`AI_TRANSLATE_GLOBAL_PER_DAY` 调整；建议在 Anthropic Console 给这个 Key 所在的 workspace 再设一个月度消费上限。用户填了自己的 Key 就直接调用 Anthropic，不占本站次数。
+
 ### 防抓取
 
 - 没登录拿不到任何页面、接口、脚本和图片；`robots.txt` 禁止所有爬虫，响应带 `X-Robots-Tag: noindex`。

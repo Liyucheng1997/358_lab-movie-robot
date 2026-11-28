@@ -1,5 +1,6 @@
 // 服务端渲染模板（结构与类名对照原站：Bootstrap 3 栅格 + v-list / result-info / line-res）
 const douban = require('./douban');
+const ai = require('./ai');
 const SITE_NAME = process.env.SITE_NAME || '片刻';
 
 const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3C/svg%3E";
@@ -129,7 +130,7 @@ function layout({ title, body, active, isIndex = false, description = '', script
   <title>${esc(title ? `${title}-${SITE_NAME}` : SITE_NAME)}</title>
   <meta name="description" content="${esc(description || title || SITE_NAME)}">
   <link rel="icon" href="/resources/logo.svg">
-  ${THEME_SCRIPT}
+  ${THEME_SCRIPT}${ai.enabled() ? '<script>window.AI_SERVER=true</script>' : ''}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="/resources/common.css?v=20">
 </head>
@@ -217,7 +218,7 @@ function keyDialog() {
   <form method="dialog" class="ai-dialog-body">
     <div class="ai-dialog-icon">${icon('key', 22)}</div>
     <h2 class="ai-dialog-title" id="ai-dialog-title">设置 Claude API Key</h2>
-    <p class="ai-dialog-desc">AI 选片、AI 陪看和字幕翻译从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
+    <p class="ai-dialog-desc">${ai.enabled() ? '本站已自带 AI，不填 Key 也能用（每天有次数上限）。想不受次数限制，可以填自己的 Key：填了以后' : ''}AI 选片、AI 陪看和字幕翻译从你的浏览器直接调用 Anthropic API，费用计入你自己的账号。Key 只保存在当前浏览器，不会发送到本站服务器。</p>
     <input class="ai-key-input" type="password" name="key" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API Key">
     <p class="ai-dialog-hint"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">在 Anthropic Console 创建 Key</a><span class="ai-dialog-error" role="alert"></span></p>
     <div class="ai-dialog-actions">
@@ -285,7 +286,7 @@ function homePage({ movies, tvs, weekly }) {
 </div>`;
   return layout({
     title: '', body, active: 'home', isIndex: true, description: `${SITE_NAME}：AI 选片、热门电影、热门剧集、口碑榜单`,
-    scripts: `<script>renderContinue();</script><script type="module" src="/resources/ai.js?v=4"></script>${REC_SCRIPTS}`,
+    scripts: `<script>renderContinue();</script><script type="module" src="/resources/ai.js?v=5"></script>${REC_SCRIPTS}`,
   });
 }
 
@@ -590,7 +591,7 @@ function playPage(d) {
     title: `${d.title}-在线播放`,
     description: d.intro.slice(0, 120),
     body,
-    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=8"></script><script src="/resources/danmaku.js?v=5"></script><script src="/resources/companion.js?v=3"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
+    scripts: `<script src="/resources/vendor/hls.min.js"></script><script src="/resources/player.js?v=8"></script><script src="/resources/danmaku.js?v=5"></script><script src="/resources/companion.js?v=4"></script>${REC_SCRIPTS}<script>initPlay(${JSON.stringify(record).replace(/</g, '\\u003c')});</script>`,
   });
 }
 
@@ -677,7 +678,7 @@ function tvPage() {
 ${keyDialog()}`;
   return layout({
     title: '电视直播', body, active: 'live', description: '各国电视频道在线直播，每 6 小时自动检测可用的公开直播源',
-    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=3"></script><script type="module" src="/resources/tv-subs.js?v=5"></script>',
+    scripts: '<script src="/resources/vendor/hls.min.js"></script><script src="/resources/tv.js?v=3"></script><script type="module" src="/resources/tv-subs.js?v=6"></script>',
   });
 }
 
@@ -773,7 +774,7 @@ function registerPage({ error = '', name = '', code = '' } = {}) {
 // 管理页：发邀请码、看谁注册了、每个账号最近的用量，删账号
 const fmtTime = (at) => (at ? new Date(at + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '');
 
-function adminPage({ me, users, admins, invites, usage, playLimit, notice = '', error = '' }) {
+function adminPage({ me, users, admins, invites, usage, playLimit, aiUsage = {}, aiOn = false, aiLimit = 0, notice = '', error = '' }) {
   const invitedBy = {};
   for (const inv of invites) for (const u of inv.uses) invitedBy[u.name] = { code: inv.code, note: inv.note, at: u.at };
   const post = (action, field, value, label, confirmText) =>
@@ -791,11 +792,13 @@ function adminPage({ me, users, admins, invites, usage, playLimit, notice = '', 
     const u = usage[name] || {};
     const from = invitedBy[name];
     const heavy = (u.plays || 0) >= playLimit || u.blocked;
+    const a = aiUsage[name] || { chat: 0, translate: 0 };
     return `
         <tr>
           <td>${esc(name)}${admins.includes(name) ? ' <span class="admin-tag">管理员</span>' : ''}</td>
           <td>${from ? `${esc(from.note || from.code)} · ${fmtTime(from.at).slice(0, 10)}` : '手动添加'}</td>
           <td class="tabular${heavy ? ' admin-warn' : ''}">${u.plays || 0}${u.blocked ? `（被拦 ${u.blocked} 次）` : ''}</td>
+          <td class="tabular${a.chat >= aiLimit && aiLimit ? ' admin-warn' : ''}">${a.chat}${a.translate ? ` + 翻译 ${a.translate}` : ''}</td>
           <td class="tabular">${u.ips || 0}</td>
           <td class="tabular">${fmtTime(u.last)}</td>
           <td>${name === me ? '' : post('/admin/user/remove', 'name', name, '删除', `删除账号 ${name}？他已登录的设备会立即退出。`)}</td>
@@ -841,10 +844,10 @@ function adminPage({ me, users, admins, invites, usage, playLimit, notice = '', 
   <div class="card">
     <h2>账号（${users.length}）</h2>
     <div class="admin-scroll"><table>
-      <thead><tr><th>账号</th><th>来源</th><th>24 小时打开影片</th><th>用过的 IP</th><th>最近访问</th><th></th></tr></thead>
+      <thead><tr><th>账号</th><th>来源</th><th>24 小时打开影片</th><th>24 小时 AI 次数</th><th>用过的 IP</th><th>最近访问</th><th></th></tr></thead>
       <tbody>${userRows}</tbody>
     </table></div>
-    <p class="hint">每个账号 24 小时内最多打开 ${playLimit} 部不同的影片，超过会被拦下并标红；用过的 IP 很多说明账号可能被转借。用量统计在服务重启后清零。</p>
+    <p class="hint">每个账号 24 小时内最多打开 ${playLimit} 部不同的影片，超过会被拦下并标红；用过的 IP 很多说明账号可能被转借。用量统计在服务重启后清零。${aiOn ? `本站自带 AI 已开启：每个账号每天最多 ${aiLimit} 次 AI 选片 / 陪看，费用计入服务器上配置的 Claude API Key。` : '本站自带 AI 未开启（服务器上没有配置 Claude API Key），用户需要填自己的 Key。'}</p>
   </div>
 </div>`;
   const scripts = `<script>document.addEventListener('submit',function(e){var m=e.target.getAttribute('data-confirm');if(m&&!confirm(m))e.preventDefault()});</script>`;

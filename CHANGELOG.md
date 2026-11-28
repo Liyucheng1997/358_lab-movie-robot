@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.19.0 — 2026-11-28
+
+- 本站自带 AI：服务器上配置 Claude API Key 后，登录的用户不用填自己的 Key 就能用 AI 选片、AI 陪看和直播字幕翻译。请求发到本站 `/api/ai`，由服务器带上 Key 转发给 Anthropic；Key 只在服务器上，不会发给浏览器。
+- 用 `node scripts/ai-key.js` 设置 Key（输入不回显，保存前先验证，存在 `data/anthropic-key`，改完不用重启），`status` 查看、`remove` 删除；也可以用环境变量 `ANTHROPIC_API_KEY`。
+- 费用算在站长账上，所以有上限：每个账号每天 60 次 AI 选片 / 陪看、1500 次字幕翻译，全站每天 1500 次 / 20000 次（环境变量 `AI_PER_DAY`、`AI_GLOBAL_PER_DAY`、`AI_TRANSLATE_PER_DAY`、`AI_TRANSLATE_GLOBAL_PER_DAY` 可调）；只转发网站用到的两个模型。管理页新增每个账号 24 小时 AI 次数。
+- 用户仍然可以在「API Key」里填自己的 Key，填了就从浏览器直接调用 Anthropic，不占本站次数。走本站服务器时 AI 陪看每次只带最近一张截图。
+
 ## 1.18.0 — 2026-11-28
 
 - 新增邀请码注册：没有账号的人凭邀请码在 `/register` 自己设账号和密码；每个邀请码可以限定使用次数和有效天数，用完、过期或作废后不能再用。登录页新增「注册账号」入口。

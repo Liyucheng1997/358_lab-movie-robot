@@ -3,7 +3,7 @@
 // 为了字幕和画面同步、出现后不再变：开字幕时后台再开一路同一条直播（低码率、不出声）专门用来识别，
 // 画面比它晚 DELAY 秒；一句话在后台识别定稿、翻译完，按分片编号对到画面的时间上，画面播到那里时才显示。
 // 识别默认用浏览器的在线语音服务；连不上时可以手动下载本机识别模型改用本机识别（processLocally）。
-import { readKey, openKeyDialog, createClient, friendlyError } from './ai-common.js?v=1';
+import { readKey, openKeyDialog, createClient, friendlyError } from './ai-common.js?v=2';
 
 const MODE_KEY = 'tv_sub_mode'; // off | orig | zh | both
 const LANG_KEY = 'tv_sub_lang'; // 频道 ID → 识别语言（手动改过的才存）

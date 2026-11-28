@@ -1,6 +1,6 @@
 // AI 选片：用访客自己的 API Key 在浏览器里直接调用 Claude，按推荐片名回查站内条目。
 // 实时版通过 /api/search 查豆瓣；静态版只在 catalog.json 已收录的影片里匹配。
-import { MODEL, readKey, onKeyChange, openKeyDialog, createClient, friendlyError, FALLBACK } from './ai-common.js?v=1';
+import { MODEL, readKey, ownKey, onKeyChange, openKeyDialog, createClient, friendlyError, FALLBACK } from './ai-common.js?v=2';
 
 const base = document.body.dataset.staticBase || '';
 const isStatic = Boolean(base);
@@ -50,7 +50,7 @@ const status = panel.querySelector('.ai-status');
 const results = panel.querySelector('.ai-results');
 function syncKeyState(has) {
   extras.classList.toggle('has-key', has);
-  extras.querySelector('.ai-key-label').textContent = has ? '已设置 Key' : 'API Key';
+  extras.querySelector('.ai-key-label').textContent = ownKey() ? '已设置 Key' : has ? '本站 AI' : 'API Key';
 }
 extras.querySelector('.ai-key-btn').addEventListener('click', () => openKeyDialog());
 

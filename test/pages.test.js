@@ -33,7 +33,7 @@ test('首页带 AI 选片面板，静态版脚本和 SDK 走仓库子目录', ()
   assert.ok(home.includes('id="ai-panel"'));
   assert.ok(home.includes('<dialog class="ai-dialog"'));
   const html = staticHTML(home, '2026-10-26');
-  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=4"></script>`));
+  assert.ok(html.includes(`<script type="module" src="${base}resources/ai.js?v=5"></script>`));
   assert.ok(home.includes('id="continue-watch"'));
 });
 
@@ -63,7 +63,7 @@ test('播放页带续播提示和 AI 陪看面板，影片资料传给陪看脚�
   assert.match(html, /companion\.js\?v=\d+"><\/script>[\s\S]*initPlay\(/);
   assert.ok(html.includes('"originalTitle":"The Shawshank Redemption"'));
   const page = staticHTML(html, '2026-11-07');
-  assert.ok(page.includes(`src="${base}resources/companion.js?v=3"`));
+  assert.ok(page.includes(`src="${base}resources/companion.js?v=4"`));
 });
 
 test('电视直播页：导航有入口，静态版播放列表和数据走仓库子目录', () => {
@@ -80,7 +80,7 @@ test('电视直播页：有字幕开关、字幕层和 API Key 弹窗，字幕�
   assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-btn"'));
   assert.ok(page.includes('id="tv-subs"') && page.includes('id="tv-subs-bar"') && page.includes('id="tv-sub-lang"'));
   assert.ok(page.includes('<dialog class="ai-dialog"'));
-  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=5"></script>'));
+  assert.ok(page.includes('<script type="module" src="/resources/tv-subs.js?v=6"></script>'));
   assert.ok(page.includes('class="pill-btn pill-btn-sm tv-subs-style-btn"') && page.includes('id="tv-subs-style"'));
 });
 

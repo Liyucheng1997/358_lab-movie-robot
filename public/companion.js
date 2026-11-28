@@ -2,7 +2,7 @@
   // AI 陪看：和 AI 一起看片、吐槽、问细节。与 AI 选片一样，用访客自己的 API Key 在浏览器里直接调用 Claude。
   // AI 默认只知道影片资料、当前选集和播放进度，以及此刻前后的弹幕；
   // 暂停时提问（或点相机按钮）会把播放器当前的画面截图一起发给 Claude。
-  var COMMON_URL = new URL('ai-common.js?v=1', document.currentScript.src).href;
+  var COMMON_URL = new URL('ai-common.js?v=2', document.currentScript.src).href;
   var CHAT_KEY = 'companion_chat_v1';
   var PREF_KEY = 'companion_prefs_v1';
   var OPEN_KEY = 'companion_open';
@@ -262,7 +262,10 @@
       var msgs = chat.slice(-MAX_SENT);
       while (msgs.length && msgs[0].role !== 'user') msgs.shift();
       // 只带最近几张截图，更早的换成文字说明
-      var withImg = msgs.filter(function (m) { return m.img; }).slice(-MAX_IMAGES_SENT);
+      // 走本站服务器时只带最近一张，请求体不超过服务器 1MB 的上限
+      var viaServer = false;
+      try { viaServer = window.AI_SERVER === true && !localStorage.getItem('anthropic_api_key'); } catch (e) {}
+      var withImg = msgs.filter(function (m) { return m.img; }).slice(-(viaServer ? 1 : MAX_IMAGES_SENT));
       var messages = msgs.map(function (m) {
         if (withImg.indexOf(m) >= 0) {
           return { role: m.role, content: [
@@ -569,6 +572,7 @@
     apply();
     // Key 状态由共享模块管理；先同步读一次，模块加载后再订阅变化
     try { hasKey = !!localStorage.getItem('anthropic_api_key'); } catch (e) {}
+    if (window.AI_SERVER === true) hasKey = true; // 本站自带 AI，不填 Key 也能用
     box.classList.toggle('has-key', hasKey);
     syncSub();
     renderLog();

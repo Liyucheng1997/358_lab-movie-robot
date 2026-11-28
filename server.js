@@ -11,6 +11,7 @@ const tv = require('./src/tv');
 const guard = require('./src/guard');
 const auth = require('./src/auth');
 const invites = require('./src/invites');
+const ai = require('./src/ai');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -237,7 +238,7 @@ async function adminRoute(req, res, pathname, user) {
   res.setHeader('Cache-Control', 'no-store');
   const page = (extra = {}) => send(res, extra.error ? 400 : 200, views.adminPage({
     me: user, users: Object.keys(auth.loadUsers()), admins: auth.loadAdmins(), invites: invites.list(),
-    usage: guard.usage(), playLimit: guard.PLAY_PER_DAY, ...extra,
+    usage: guard.usage(), playLimit: guard.PLAY_PER_DAY, aiUsage: ai.usage(), aiOn: ai.enabled(), aiLimit: ai.LIMITS.chat.perUser, ...extra,
   }));
   if (req.method !== 'POST') return pathname === '/admin' ? page() : send(res, 404, views.errorPage(404, '你访问的页面不存在'));
   if (!sameOrigin(req)) return send(res, 403, 'forbidden');
@@ -311,6 +312,12 @@ async function route(req, res) {
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     if (!auth.isAdmin(user)) return send(res, 404, views.errorPage(404, '你访问的页面不存在'));
     return adminRoute(req, res, pathname, user);
+  }
+
+  // 站点自带的 Claude：登录用户的 AI 请求由服务器带上站长的 Key 转发（没登录的上面已经拦掉）
+  if (pathname === '/api/ai/v1/messages') {
+    if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
+    return ai.proxy(req, res, user || 'local');
   }
 
   if (pathname === '/' || pathname === '/index.html') return home(res);
